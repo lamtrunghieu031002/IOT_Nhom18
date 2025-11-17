@@ -2,6 +2,7 @@ package com.alcohol.alcoholdetectionsystem.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -19,7 +20,8 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @NoArgsConstructor
-public class AlcoholTest {
+@Builder
+public class AlcoholTestEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,11 +29,11 @@ public class AlcoholTest {
 
     @ManyToOne
     @JoinColumn(name = "device_id", nullable = false)
-    private Device device;
+    private DeviceEntity deviceEntity;
 
     @ManyToOne
     @JoinColumn(name = "officer_id", nullable = false)
-    private User officer;
+    private UserEntity officer;
 
     @Column(nullable = false)
     private String subjectName;
@@ -71,7 +73,7 @@ public class AlcoholTest {
     private LocalDateTime testTime;
 
     @OneToOne(mappedBy = "alcoholTest", cascade = CascadeType.ALL)
-    private Violation violation;
+    private ViolationEntity violationEntity;
 
     @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

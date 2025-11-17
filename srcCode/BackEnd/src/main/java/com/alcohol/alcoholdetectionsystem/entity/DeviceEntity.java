@@ -3,6 +3,7 @@ package com.alcohol.alcoholdetectionsystem.entity;
 import com.alcohol.alcoholdetectionsystem.enums.DeviceStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -15,7 +16,8 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class)
 @AllArgsConstructor
 @NoArgsConstructor
-public class Device {
+@Builder
+public class DeviceEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,7 +36,7 @@ public class Device {
 
     @ManyToOne
     @JoinColumn(name = "registered_by", nullable = false)
-    private User registeredBy;
+    private UserEntity registeredBy;
 
     private LocalDateTime lastCalibration;
     private LocalDateTime nextCalibration;
