@@ -2,6 +2,7 @@ package com.alcohol.alcoholdetectionsystem.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
@@ -14,7 +15,8 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Violation {
+@Builder
+public class ViolationEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,11 +24,11 @@ public class Violation {
 
     @OneToOne
     @JoinColumn(name = "test_id", nullable = false, unique = true)
-    private AlcoholTest alcoholTest;
+    private AlcoholTestEntity alcoholTest;
 
     @ManyToOne
     @JoinColumn(name = "processed_by")
-    private User processedBy;
+    private UserEntity processedBy;
 
     @Column(nullable = false)
     private String level;
@@ -51,7 +53,7 @@ public class Violation {
     @Column(columnDefinition = "boolean default false")
     private Boolean vehicleDetained = false;
 
-    public Violation(AlcoholTest test, String level, Double fineAmount) {
+    public ViolationEntity(AlcoholTestEntity test, String level, Double fineAmount) {
         this.alcoholTest = test;
         this.level = level;
         this.fineAmount = fineAmount;

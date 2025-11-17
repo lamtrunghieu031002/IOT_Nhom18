@@ -3,6 +3,7 @@ package com.alcohol.alcoholdetectionsystem.entity;
 import com.alcohol.alcoholdetectionsystem.enums.RoleEnum;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
@@ -12,7 +13,8 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+@Builder
+public class UserEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,11 +29,14 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column
     private String fullName;
 
     @Column(nullable = false)
     private RoleEnum role;
+
+    @Column
+    private boolean isDeleted = false;
 
     @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
