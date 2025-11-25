@@ -22,9 +22,7 @@ public class MeasurementRequest {
     @Min(value = 16, message = "Subject age must be at least 16")
     @Max(value = 100, message = "Subject age must not exceed 100")
     private Integer subjectAge;
-
     private String subjectGender;
-
     @NotNull(message = "Alcohol level is required")
     @DecimalMin(value = "0.0", message = "Alcohol level must be positive")
     private Double alcoholLevel;

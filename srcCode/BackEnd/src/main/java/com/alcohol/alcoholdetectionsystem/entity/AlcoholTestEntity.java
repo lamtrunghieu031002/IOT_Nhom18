@@ -44,16 +44,10 @@ public class AlcoholTestEntity {
     private Integer subjectAge;
 
     @Column(length = 10)
-    private String subjectGender;
+    private String subjectGenders;
 
     @Column(nullable = false)
     private Double alcoholLevel;
-
-    @Column(nullable = false)
-    private String vehicleType;
-
-    @Column(nullable = false)
-    private String vehiclePlate;
 
     @Column(nullable = false)
     private String location;
@@ -69,7 +63,7 @@ public class AlcoholTestEntity {
     @Column(length = 20)
     private String status;
 
-    @CreatedDate
+    @Column
     private LocalDateTime testTime;
 
     @OneToOne(mappedBy = "alcoholTest", cascade = CascadeType.ALL)
