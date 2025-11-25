@@ -94,6 +94,15 @@ Cập nhật file `src/main/resources/application.yaml` với nội dung:
 - url: jdbc:postgresql://iot-database-kwinn0332-a11a.c.aivencloud.com:19603/defaultdb?sslmode=require&ssl=true
 - username: avnadmin
 - password: AVNS_OCAKD1bJDP7ATIAn5OJ
+- secretKey: 2c5dfe83271d0b206b1d4e226a3f351601b454dfb83da5465672e507ed0fabbc
+
+Hoặc có thể tạo file .env với các giá trị
+
+- SPRING_DATASOURCE_URL=jdbc:postgresql://iot-database-kwinn0332-a11a.c.aivencloud.com:19603/defaultdb?sslmode=require&ssl=true
+- SPRING_DATASOURCE_USERNAME=avnadmin
+- SPRING_DATASOURCE_PASSWORD=AVNS_OCAKD1bJDP7ATIAn5OJ
+
+- JWT_SECRET_KEY=2c5dfe83271d0b206b1d4e226a3f351601b454dfb83da5465672e507ed0fabbc
 
 ## 🚀 Chạy Ứng Dụng
 
