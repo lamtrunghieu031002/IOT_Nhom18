@@ -1,6 +1,5 @@
 package com.alcohol.alcoholdetectionsystem.dto.response;
 
-import com.alcohol.alcoholdetectionsystem.enums.DeviceStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,13 +11,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class DeviceResponse {
+public class DeviceCalibrationResponse {
     private String deviceId;
     private String name;
-    private String model;
-    private DeviceStatus status;
     private LocalDateTime lastCalibration;
     private LocalDateTime nextCalibration;
-    private Long registeredBy;
-    private LocalDateTime createdAt;
+    private Long daysOverdue;
 }

@@ -1,9 +1,7 @@
 package com.alcohol.alcoholdetectionsystem.service;
 
 import com.alcohol.alcoholdetectionsystem.dto.request.DeviceRegisterRequest;
-import com.alcohol.alcoholdetectionsystem.dto.response.DeviceCheckResponse;
-import com.alcohol.alcoholdetectionsystem.dto.response.DeviceListResponse;
-import com.alcohol.alcoholdetectionsystem.dto.response.DeviceResponse;
+import com.alcohol.alcoholdetectionsystem.dto.response.*;
 import com.alcohol.alcoholdetectionsystem.entity.DeviceEntity;
 import com.alcohol.alcoholdetectionsystem.entity.UserEntity;
 import com.alcohol.alcoholdetectionsystem.enums.DeviceStatus;
@@ -16,15 +14,34 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class DeviceService {
     private final DeviceRepository deviceRepository;
     private final UserRepository userRepository;
+
+    private DeviceResponse toDeviceResponse(DeviceEntity entity) {
+        return DeviceResponse.builder()
+                .deviceId(entity.getDeviceId())
+                .name(entity.getName())
+                .model(entity.getModel())
+                .status(entity.getStatus())
+                .lastCalibration(entity.getLastCalibration())
+                .nextCalibration(entity.getNextCalibration())
+                .registeredBy(entity.getRegisteredBy().getId())
+                .createdAt(entity.getCreatedAt())
+                .build();
+    }
 
     public DeviceResponse registerDevice(DeviceRegisterRequest request, Authentication authentication) {
         if (deviceRepository.existsByDeviceId(request.getDeviceId())) {
@@ -44,11 +61,7 @@ public class DeviceService {
                 .build();
 
         deviceRepository.save(deviceEntity);
-        return DeviceResponse.builder()
-                .deviceId(deviceEntity.getDeviceId())
-                .name(deviceEntity.getName())
-                .model(deviceEntity.getModel())
-                .build();
+        return toDeviceResponse(deviceEntity);
     }
 
     public DeviceListResponse getAllDevices(String status, String search, int page, int size) {
@@ -72,12 +85,7 @@ public class DeviceService {
         }
 
         List<DeviceResponse> devices = devicePage.getContent().stream()
-                .map(deviceEntity -> DeviceResponse.builder()
-                        .deviceId(deviceEntity.getDeviceId())
-                        .name(deviceEntity.getName())
-                        .model(deviceEntity.getModel())
-                        .build()
-                )
+                .map(this::toDeviceResponse)
                 .toList();
 
         return DeviceListResponse.builder()
@@ -98,11 +106,7 @@ public class DeviceService {
 
     public DeviceResponse getDeviceById(String deviceId) {
         DeviceEntity device = deviceRepository.findByDeviceId(deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
-        return DeviceResponse.builder()
-                .deviceId(device.getDeviceId())
-                .name(device.getName())
-                .model(device.getModel())
-                .build();
+        return toDeviceResponse(device);
     }
 
     public DeviceCheckResponse checkDevice(String deviceId) {
@@ -114,6 +118,62 @@ public class DeviceService {
                 .status(deviceEntity.getStatus())
                 .lastCalibration(deviceEntity.getLastCalibration())
                 .nextCalibration(deviceEntity.getNextCalibration())
+                .build();
+    }
+
+    public DeviceResponse updateDeviceStatus(String deviceId, String status) {
+        DeviceEntity device = deviceRepository.findByDeviceId(deviceId)
+                .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+
+        try {
+            DeviceStatus newStatus = DeviceStatus.valueOf(status.toUpperCase());
+            device.setStatus(newStatus);
+            deviceRepository.save(device);
+            return toDeviceResponse(device);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid device status: " + status);
+        }
+    }
+
+    public DeviceResponse updateCalibration(String deviceId) {
+        DeviceEntity device = deviceRepository.findByDeviceId(deviceId)
+                .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+
+        device.setLastCalibration(LocalDateTime.now());
+        device.setNextCalibration(LocalDateTime.now().plusDays(180));
+        deviceRepository.save(device);
+        return toDeviceResponse(device);
+    }
+
+    public List<DeviceCalibrationResponse> getDevicesNeedCalibration() {
+        LocalDateTime now = LocalDateTime.now();
+        List<DeviceEntity> devices = deviceRepository.findByNextCalibrationBefore(now);
+
+        return devices.stream()
+                .map(device -> {
+                    long daysOverdue = ChronoUnit.DAYS.between(device.getNextCalibration(), now);
+                    return DeviceCalibrationResponse.builder()
+                            .deviceId(device.getDeviceId())
+                            .name(device.getName())
+                            .lastCalibration(device.getLastCalibration())
+                            .nextCalibration(device.getNextCalibration())
+                            .daysOverdue(daysOverdue)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    public DeviceStatisticsResponse getDeviceStatistics() {
+        long totalDevices = deviceRepository.count();
+        long activeDevices = deviceRepository.countByStatus(DeviceStatus.ACTIVE);
+        long maintenanceDevices = deviceRepository.countByStatus(DeviceStatus.MAINTENANCE);
+        long devicesNeedCalibration = deviceRepository.countByNextCalibrationBefore(LocalDateTime.now());
+
+        return DeviceStatisticsResponse.builder()
+                .totalDevices(totalDevices)
+                .activeDevices(activeDevices)
+                .maintenanceDevices(maintenanceDevices)
+                .devicesNeedCalibration(devicesNeedCalibration)
                 .build();
     }
 }
