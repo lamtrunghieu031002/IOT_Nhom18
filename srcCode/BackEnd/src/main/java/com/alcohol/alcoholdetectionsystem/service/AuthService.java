@@ -43,7 +43,7 @@ public class AuthService {
                 .subject(userEntity.getUsername())
                 .issuer("iot.system.com")
                 .issueTime(new Date())
-                .expirationTime(new Date(Instant.now().plus(EXPIRATION, ChronoUnit.SECONDS).toEpochMilli()))
+                .expirationTime(new Date(Instant.now().toEpochMilli() + EXPIRATION))
                 .claim("scope", buildScope(userEntity))
                 .claim("userId", userEntity.getId())
                 .build();
