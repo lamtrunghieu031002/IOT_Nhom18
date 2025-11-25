@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +19,7 @@ import java.util.List;
 public class DeviceController {
     private final DeviceService deviceService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<DeviceResponse>> registerDevice(
             @Valid @RequestBody DeviceRegisterRequest request,
@@ -32,6 +34,7 @@ public class DeviceController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @GetMapping("/check/{deviceId}")
     public ResponseEntity<ApiResponse<DeviceCheckResponse>> checkDevice(@PathVariable String deviceId) {
         try {
@@ -44,6 +47,7 @@ public class DeviceController {
     }
 
     @GetMapping("")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<DeviceListResponse>> getAllDevices(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String search,
@@ -58,6 +62,7 @@ public class DeviceController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{deviceId}")
     public ResponseEntity<ApiResponse<Void>> deleteDevice(@PathVariable String deviceId) {
         try {
@@ -70,6 +75,7 @@ public class DeviceController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @GetMapping("/{deviceId}")
     public ResponseEntity<ApiResponse<DeviceResponse>> getDeviceDetails(@PathVariable String deviceId) {
         try {
@@ -81,6 +87,7 @@ public class DeviceController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @PutMapping("/{deviceId}/status")
     public ResponseEntity<ApiResponse<DeviceResponse>> updateDeviceStatus(
             @PathVariable String deviceId,
@@ -93,6 +100,7 @@ public class DeviceController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{deviceId}/calibration")
     public ResponseEntity<ApiResponse<DeviceResponse>> updateDeviceCalibration(@PathVariable String deviceId) {
         try {
@@ -103,6 +111,7 @@ public class DeviceController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/calibration/needed")
     public ResponseEntity<ApiResponse<List<DeviceCalibrationResponse>>> getDevicesNeedCalibration() {
         try {
@@ -113,6 +122,7 @@ public class DeviceController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/statistics")
     public ResponseEntity<ApiResponse<DeviceStatisticsResponse>> getDeviceStatistics() {
         try {

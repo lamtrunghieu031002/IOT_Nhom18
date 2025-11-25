@@ -2,9 +2,9 @@ server:
   port: 8080
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/alcohol_db
-    username: postgres
-    password: 123456
+    url: jdbc:postgresql://iot-database-kwinn0332-a11a.c.aivencloud.com:19603/defaultdb?sslmode=require&ssl=true
+    username: avnadmin
+    password: AVNS_OCAKD1bJDP7ATIAn5OJ
     driver-class-name: org.postgresql.Driver
 
   jpa:
