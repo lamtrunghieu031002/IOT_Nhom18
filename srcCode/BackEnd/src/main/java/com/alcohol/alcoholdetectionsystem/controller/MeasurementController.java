@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +25,7 @@ public class MeasurementController {
 
     private final MeasurementService measurementService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @PostMapping()
     public ResponseEntity<ApiResponse<AlcoholTestResponse>> createMeasurement(
             @Valid @RequestBody MeasurementRequest request,
@@ -40,6 +42,7 @@ public class MeasurementController {
     }
 
     @GetMapping("")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<MeasurementListResponse>> getAllMeasurements(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -52,6 +55,7 @@ public class MeasurementController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AlcoholTestResponse>> getMeasurementById(@PathVariable Long id) {
         try {
@@ -63,6 +67,7 @@ public class MeasurementController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/statistics")
     public ResponseEntity<ApiResponse<MeasurementStatisticsResponse>> getMeasurementStatistics(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
@@ -76,6 +81,7 @@ public class MeasurementController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @GetMapping("/officer/{officerId}")
     public ResponseEntity<ApiResponse<List<AlcoholTestResponse>>> getMeasurementsByOfficer(
             @PathVariable Long officerId) {
@@ -88,6 +94,7 @@ public class MeasurementController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @GetMapping("/device/{deviceId}")
     public ResponseEntity<ApiResponse<List<AlcoholTestResponse>>> getMeasurementsByDevice(
             @PathVariable String deviceId) {
