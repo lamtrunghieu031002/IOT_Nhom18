@@ -1,8 +1,10 @@
 package service;
 
 import model.Device;
+import model.DevicePageResponse;
 import model.MeasurementHistory;
 import model.User;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.*;
@@ -68,6 +70,9 @@ public class ApiClient {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         
         // Cấu hình request
+        if (accessToken != null) {
+            connection.setRequestProperty("Authorization", "Bearer " + accessToken);
+        }
         connection.setRequestMethod(method);
         connection.setRequestProperty("Content-Type", "application/json");
         
@@ -117,20 +122,77 @@ public class ApiClient {
     }
 
     // --- Phương thức Quản lý Thiết bị (Giả định) ---
-    public List<Device> getAllDevices() throws Exception {
-        // Thực hiện API GET /api/devices
-        Thread.sleep(1000);
-        List<Device> devices = new ArrayList<>();
-        devices.add(new Device("00:1A:2B:3C:4D:5E", "AlcoMaster 1", "AM-100", "2025-11-01", "Hoạt động"));
-        devices.add(new Device("AA:BB:CC:DD:EE:FF", "AlcoTester Pro", "AT-200", "2025-11-15", "Không hoạt động"));
-        return devices;
+
+    public DevicePageResponse getDevicesPaging(String status, int page, int size) throws Exception {
+        String url = BASE_URL + "/api/devices?status=" + status + "&page=" + page + "&size=" + size;
+
+        String response = sendHttpRequest("GET", url, null);
+
+        JSONObject json = new JSONObject(response);
+
+        if (!json.getBoolean("success")) {
+            throw new Exception(json.getString("message"));
+        }
+
+        JSONObject data = json.getJSONObject("data");
+
+        // Parse devices
+        JSONArray arr = data.getJSONArray("devices");
+        List<Device> deviceList = new ArrayList<>();
+
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.getJSONObject(i);
+            deviceList.add(new Device(
+                    o.getString("deviceId"),
+                    o.getString("name"),
+                    o.getString("model"),
+                    o.getString("createdAt"),
+                    o.getString("status")
+            ));
+        }
+
+        return new DevicePageResponse(
+                deviceList,
+                data.getInt("page"),
+                data.getInt("size"),
+                data.getInt("total"),
+                data.getInt("totalPages")
+        );
     }
 
-    public boolean deleteDevice(String macAddress) throws Exception {
-        // Thực hiện API DELETE /api/devices/{macAddress}
-        Thread.sleep(500);
+    public boolean addDevice(String deviceId, String name, String model) throws Exception {
+        String url = BASE_URL + "/api/devices/register";
+
+        JSONObject req = new JSONObject();
+        req.put("deviceId", deviceId);
+        req.put("name", name);
+        req.put("model", model);
+
+        String response = sendHttpRequest("POST", url, req.toString());
+
+        JSONObject json = new JSONObject(response);
+
+        if (!json.getBoolean("success")) {
+            throw new Exception(json.getString("message"));
+        }
+
+        return true; // chỉ cần success
+    }
+
+    public boolean deleteDevice(String deviceId) throws Exception {
+        String url = BASE_URL + "/api/devices/" + deviceId;
+
+        String response = sendHttpRequest("DELETE", url, null);
+
+        JSONObject json = new JSONObject(response);
+
+        if (!json.getBoolean("success")) {
+            throw new Exception(json.getString("message"));
+        }
+
         return true;
     }
+
     public boolean addUser(Map<String, String> data) throws Exception {
         // Thực hiện API POST /api/users/add hoặc tương tự
         System.out.println("API Call: POST /api/users/add with data: " + data.keySet());

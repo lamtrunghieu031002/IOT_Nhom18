@@ -1,6 +1,7 @@
 package ui.user;
 
 import model.Device;
+import model.DevicePageResponse;
 import service.ApiClient;
 
 import javax.swing.*;
@@ -14,30 +15,33 @@ public class ConnectionPanel extends JPanel {
 
     private JTable deviceTable;
     private DefaultTableModel tableModel;
-    private final String[] columnNames = {"Địa chỉ MAC", "Tên thiết bị", "Model", "Kết nối"};
+    private final String[] columnNames = {"Device ID", "Tên thiết bị", "Model", "Trạng thái"};
 
-    private JButton connectButton;
+    private JButton loadButton;
     private JLabel loadingLabel;
+
+    // Paging
+    private int currentPage = 1;
+    private final int pageSize = 10;
 
     public ConnectionPanel() {
         setLayout(new BorderLayout());
         setBackground(new Color(245, 247, 250));
 
         // ================= HEADER ====================
-        JLabel header = new JLabel("🔵 KẾT NỐI THIẾT BỊ BLUETOOTH", SwingConstants.CENTER);
+        JLabel header = new JLabel("🔵 DANH SÁCH THIẾT BỊ", SwingConstants.CENTER);
         header.setOpaque(true);
         header.setFont(new Font("Segoe UI", Font.BOLD, 20));
         header.setForeground(Color.WHITE);
         header.setBackground(new Color(52, 152, 219));
         header.setBorder(new EmptyBorder(15, 10, 15, 10));
-
         add(header, BorderLayout.NORTH);
 
         // ================ TABLE ======================
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) {
-                return false; // Không cho sửa ô
+            public boolean isCellEditable(int row, int col) {
+                return false;
             }
         };
 
@@ -46,33 +50,24 @@ public class ConnectionPanel extends JPanel {
         deviceTable.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         deviceTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 14));
         deviceTable.getTableHeader().setBackground(new Color(230, 230, 230));
-        deviceTable.setGridColor(new Color(220, 220, 220));
 
-        /// Thiết lập màu chọn mặc định của table (thích hợp cho look & feel)
         deviceTable.setSelectionBackground(new Color(52, 152, 219));
         deviceTable.setSelectionForeground(Color.WHITE);
-        deviceTable.setRowSelectionAllowed(true);
         deviceTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        // Renderer an toàn: luôn set cả background lẫn foreground
         deviceTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
-                                                           boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                                                           boolean isSelected, boolean hasFocus, int row, int col) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
 
                 if (isSelected) {
                     c.setBackground(table.getSelectionBackground());
                     c.setForeground(table.getSelectionForeground());
                 } else {
-                    // màu nền xen kẽ
                     c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(245, 245, 245));
-                    // phục hồi màu chữ mặc định của table (tránh để lại màu cũ)
-                    c.setForeground(table.getForeground());
+                    c.setForeground(Color.BLACK);
                 }
-
-                // canh lề/format nếu cần
-                setBorder(null);
                 return c;
             }
         });
@@ -85,84 +80,91 @@ public class ConnectionPanel extends JPanel {
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.setBackground(new Color(245, 247, 250));
 
-        connectButton = new JButton("📡 Bật Bluetooth & Quét thiết bị");
-        connectButton.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        connectButton.setBackground(new Color(46, 204, 113));
-        connectButton.setForeground(Color.WHITE);
-        connectButton.setFocusPainted(false);
-        connectButton.setBorder(new EmptyBorder(10, 15, 10, 15));
+        loadButton = new JButton("🔄 Tải danh sách thiết bị");
+        loadButton.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        loadButton.setBackground(new Color(46, 204, 113));
+        loadButton.setForeground(Color.WHITE);
+        loadButton.setFocusPainted(false);
+        loadButton.setBorder(new EmptyBorder(10, 15, 10, 15));
 
-        // Khi hover đổi màu
-        connectButton.addChangeListener(e -> {
-            if (connectButton.getModel().isRollover()) {
-                connectButton.setBackground(new Color(39, 174, 96));
-            } else {
-                connectButton.setBackground(new Color(46, 204, 113));
-            }
-        });
+        bottomPanel.add(loadButton, BorderLayout.CENTER);
 
-        bottomPanel.add(connectButton, BorderLayout.CENTER);
-
-        loadingLabel = new JLabel("", SwingConstants.CENTER);
+        loadingLabel = new JLabel(" ", SwingConstants.CENTER);
         loadingLabel.setFont(new Font("Segoe UI", Font.ITALIC, 13));
         loadingLabel.setBorder(new EmptyBorder(5, 0, 10, 0));
         loadingLabel.setForeground(new Color(100, 100, 100));
-
         bottomPanel.add(loadingLabel, BorderLayout.SOUTH);
 
-        connectButton.addActionListener(e -> scanAndLoadDevices());
+        loadButton.addActionListener(e -> loadDevicePage());
 
         add(bottomPanel, BorderLayout.SOUTH);
 
-        // Auto load khi khởi động
-        scanAndLoadDevices();
+        // Auto load page 0
+        loadDevicePage();
     }
 
-    private void scanAndLoadDevices() {
-        connectButton.setEnabled(false);
-        loadingLabel.setText("⏳ Đang quét thiết bị Bluetooth...");
+    private void loadDevicePage() {
+        loadButton.setEnabled(false);
+        loadingLabel.setText("⏳ Đang tải danh sách thiết bị...");
 
-        new SwingWorker<List<Device>, Void>() {
+        new SwingWorker<DevicePageResponse, Void>() {
             @Override
-            protected List<Device> doInBackground() throws Exception {
-                Thread.sleep(1000); // hiệu ứng loading cho mượt
-                return ApiClient.getInstance().getAllDevices();
+            protected DevicePageResponse doInBackground() throws Exception {
+                // status = ALL
+                return ApiClient.getInstance().getDevicesPaging("ACTIVE", currentPage, pageSize);
             }
 
             @Override
             protected void done() {
                 try {
-                    List<Device> devices = get();
-                    tableModel.setRowCount(0);
+                    DevicePageResponse page = get();
+                    List<Device> devices = page.getDevices();
 
+                    tableModel.setRowCount(0);
                     for (Device d : devices) {
                         tableModel.addRow(new Object[]{
-                                d.getMacAddress(), d.getName(), d.getModel(), "Kết nối"
+                                d.getDeviceId(),
+                                d.getName(),
+                                d.getModel(),
+                                d.getStatus()
                         });
                     }
 
-                    loadingLabel.setText("✔ Tìm thấy " + devices.size() + " thiết bị");
+                    loadingLabel.setText("✔ Trang " + (page.getPage() + 1)
+                            + " / " + page.getTotalPages()
+                            + " — Tổng " + page.getTotal() + " thiết bị");
 
-                } catch (Exception e) {
-                    loadingLabel.setText("❌ Lỗi khi quét thiết bị!");
-                    JOptionPane.showMessageDialog(ConnectionPanel.this,
-                            "Lỗi khi quét thiết bị: " + e.getMessage(), "Lỗi Bluetooth/API",
-                            JOptionPane.ERROR_MESSAGE);
+                } catch (Exception ex) {
+                    String msg = ex.getMessage();
+
+                    if (msg.contains("401") || msg.contains("403")) {
+                        JOptionPane.showMessageDialog(ConnectionPanel.this,
+                                "❌ Bạn không có quyền hoặc token hết hạn!",
+                                "Lỗi phân quyền",
+                                JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(ConnectionPanel.this,
+                                "❌ Lỗi tải dữ liệu: " + msg,
+                                "Lỗi API",
+                                JOptionPane.ERROR_MESSAGE);
+                    }
+
+                    loadingLabel.setText("❌ Lỗi tải thiết bị");
                 } finally {
-                    connectButton.setEnabled(true);
+                    loadButton.setEnabled(true);
                 }
             }
         }.execute();
     }
+
+    // Test UI
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Test Connection Panel");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(900, 600);
             frame.setLocationRelativeTo(null);
-
-            frame.add(new ConnectionPanel()); // ← Gắn panel vào frame
-
+            frame.add(new ConnectionPanel());
             frame.setVisible(true);
         });
     }

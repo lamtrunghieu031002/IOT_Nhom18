@@ -1,48 +1,47 @@
 package ui.admin;
 
+import service.ApiClient;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.HashMap;
-import java.util.Map;
+
 public class AddDeviceDialog extends JDialog {
 
     private DeviceManagementPanel parentPanel;
-    private JTextField macField, nameField, modelField;
+    private JTextField deviceIdField, nameField, modelField;
 
     public AddDeviceDialog(DeviceManagementPanel parent) {
-        super((JFrame) SwingUtilities.getWindowAncestor(parent), "Thêm Thông tin Thiết bị", true);
+        super((JFrame) SwingUtilities.getWindowAncestor(parent), "Thêm Thiết bị", true);
         this.parentPanel = parent;
 
         setLayout(new BorderLayout(10, 10));
-        setSize(400, 250);
+        setSize(420, 260);
         setLocationRelativeTo(parent);
 
         JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 10));
 
-        macField = new JTextField(20);
-        macField.setEditable(false); // Giả định MAC được quét và cố định
+        deviceIdField = new JTextField(20);
         nameField = new JTextField(20);
         modelField = new JTextField(20);
 
-        // Giả lập MAC đã được quét
-        macField.setText("AA:BB:CC:DD:12:34");
+        formPanel.add(new JLabel("Device ID:"));
+        formPanel.add(deviceIdField);
 
-        formPanel.add(new JLabel("Địa chỉ MAC:"));
-        formPanel.add(macField);
-        formPanel.add(new JLabel("Tên:"));
+        formPanel.add(new JLabel("Tên thiết bị:"));
         formPanel.add(nameField);
+
         formPanel.add(new JLabel("Model:"));
         formPanel.add(modelField);
 
         add(formPanel, BorderLayout.CENTER);
 
         JButton addButton = new JButton("Thêm");
-        JButton backButton = new JButton("Quay lại");
+        JButton backButton = new JButton("Hủy");
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.add(addButton);
         buttonPanel.add(backButton);
+
         add(buttonPanel, BorderLayout.SOUTH);
 
         addButton.addActionListener(e -> addDevice());
@@ -50,32 +49,41 @@ public class AddDeviceDialog extends JDialog {
     }
 
     private void addDevice() {
-        Map<String, String> data = new HashMap<>();
-        data.put("macAddress", macField.getText());
-        data.put("name", nameField.getText());
-        data.put("model", modelField.getText());
+        String deviceId = deviceIdField.getText().trim();
+        String name = nameField.getText().trim();
+        String model = modelField.getText().trim();
+
+        if (deviceId.isEmpty() || name.isEmpty() || model.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Vui lòng nhập đầy đủ thông tin!",
+                    "Thiếu dữ liệu",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
         new SwingWorker<Boolean, Void>() {
             @Override
             protected Boolean doInBackground() throws Exception {
-                // Giả định API Backend có endpoint đăng ký thiết bị mới
-                // return ApiClient.getInstance().addDevice(data);
-                Thread.sleep(1000);
-                return true;
+                return ApiClient.getInstance().addDevice(deviceId, name, model);
             }
 
             @Override
             protected void done() {
                 try {
                     if (get()) {
-                        JOptionPane.showMessageDialog(AddDeviceDialog.this, "Đăng ký thiết bị thành công!", "Hoàn tất", JOptionPane.INFORMATION_MESSAGE);
-                        parentPanel.loadDevices();
+                        JOptionPane.showMessageDialog(AddDeviceDialog.this,
+                                "Thiết bị đã đăng ký thành công!",
+                                "Thành công",
+                                JOptionPane.INFORMATION_MESSAGE);
+
+                        parentPanel.loadDevices();  // load lại bảng
                         dispose();
-                    } else {
-                        JOptionPane.showMessageDialog(AddDeviceDialog.this, "Lỗi khi thêm thiết bị.", "Lỗi API", JOptionPane.ERROR_MESSAGE);
                     }
                 } catch (Exception e) {
-                    JOptionPane.showMessageDialog(AddDeviceDialog.this, "Lỗi kết nối: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(AddDeviceDialog.this,
+                            "Lỗi: " + e.getMessage(),
+                            "API Error",
+                            JOptionPane.ERROR_MESSAGE);
                 }
             }
         }.execute();

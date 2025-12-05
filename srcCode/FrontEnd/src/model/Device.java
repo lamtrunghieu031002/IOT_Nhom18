@@ -1,24 +1,23 @@
 package model;
+
 public class Device {
-    private String macAddress;
+    private String deviceId;
     private String name;
     private String model;
-    private String dateAdded;
     private String status;
+    private String createdAt;
 
-    // Constructor
-    public Device(String macAddress, String name, String model, String dateAdded, String status) {
-        this.macAddress = macAddress;
+    public Device(String deviceId, String name, String model, String status, String createdAt) {
+        this.deviceId = deviceId;
         this.name = name;
         this.model = model;
-        this.dateAdded = dateAdded;
         this.status = status;
+        this.createdAt = createdAt;
     }
 
-    // Getters
-    public String getMacAddress() { return macAddress; }
+    public String getDeviceId() { return deviceId; }
     public String getName() { return name; }
     public String getModel() { return model; }
-    public String getDateAdded() { return dateAdded; }
     public String getStatus() { return status; }
+    public String getCreatedAt() { return createdAt; }
 }
