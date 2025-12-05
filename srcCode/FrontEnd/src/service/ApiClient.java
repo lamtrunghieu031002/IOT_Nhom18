@@ -1,8 +1,14 @@
 package service;
+
 import model.Device;
 import model.MeasurementHistory;
 import model.User;
+import org.json.JSONObject;
 
+import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +17,12 @@ import java.util.Map;
 public class ApiClient {
 
     private static ApiClient instance;
+    private static final String BASE_URL = "http://localhost:8080";
+    
+    // Store authentication info
+    private String accessToken;
+    private String role;
+    private Integer userId;
 
     // Constructor private để đảm bảo Singleton
     private ApiClient() {}
@@ -22,17 +34,86 @@ public class ApiClient {
         return instance;
     }
 
-    // --- Phương thức Đăng nhập (Giả định) ---
+    // --- Phương thức Đăng nhập (Kết nối API thực) ---
     public String login(String username, String password) throws Exception {
         // Thực hiện API POST /api/auth/login
-        Thread.sleep(500); // Giả lập độ trễ mạng
-        if ("admin".equals(username) && "123".equals(password)) {
-            return "admin"; // Trả về vai trò (Role)
-        } else if ("user".equals(username) && "123".equals(password)) {
-            return "user"; // Trả về vai trò (Role)
+        String url = BASE_URL + "/api/auth/login";
+        
+        // Tạo request body
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("username", username);
+        requestBody.put("password", password);
+        
+        // Gửi HTTP POST request
+        String responseBody = sendHttpRequest("POST", url, requestBody.toString());
+        
+        // Parse response JSON
+        JSONObject responseJson = new JSONObject(responseBody);
+        
+        if (responseJson.getBoolean("success")) {
+            JSONObject data = responseJson.getJSONObject("data");
+            this.accessToken = data.getString("accessToken");
+            this.role = data.getString("role");
+            this.userId = data.getInt("userId");
+            
+            return this.role; // Trả về vai trò (Role)
         } else {
-            throw new Exception("Thông tin đăng nhập không hợp lệ.");
+            throw new Exception(responseJson.getString("message"));
         }
+    }
+    
+    // --- Phương thức gửi HTTP request ---
+    private String sendHttpRequest(String method, String urlString, String requestBody) throws Exception {
+        URL url = new URL(urlString);
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        
+        // Cấu hình request
+        connection.setRequestMethod(method);
+        connection.setRequestProperty("Content-Type", "application/json");
+        
+        // Gửi request body nếu có
+        if (requestBody != null) {
+            connection.setDoOutput(true);
+            try (OutputStream os = connection.getOutputStream()) {
+                byte[] input = requestBody.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+        }
+        
+        // Đọc response
+        int statusCode = connection.getResponseCode();
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(
+                        statusCode >= 400 ? connection.getErrorStream() : connection.getInputStream(),
+                        StandardCharsets.UTF_8
+                )
+        );
+        
+        StringBuilder response = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            response.append(line);
+        }
+        reader.close();
+        
+        if (statusCode >= 400) {
+            throw new Exception("HTTP Error " + statusCode + ": " + response.toString());
+        }
+        
+        return response.toString();
+    }
+    
+    // --- Getters cho token và user info ---
+    public String getAccessToken() {
+        return accessToken;
+    }
+    
+    public String getRole() {
+        return role;
+    }
+    
+    public Integer getUserId() {
+        return userId;
     }
 
     // --- Phương thức Quản lý Thiết bị (Giả định) ---
