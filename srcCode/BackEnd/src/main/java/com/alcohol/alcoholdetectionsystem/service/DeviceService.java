@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -175,5 +176,15 @@ public class DeviceService {
                 .maintenanceDevices(maintenanceDevices)
                 .devicesNeedCalibration(devicesNeedCalibration)
                 .build();
+    }
+    public List<DeviceResponse> checkBatchDevices(List<String> macAddresses) {
+        if (macAddresses == null || macAddresses.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<DeviceEntity> foundDevices = deviceRepository.findByDeviceIdIn(macAddresses);
+
+        return foundDevices.stream()
+                .map(this::toDeviceResponse)
+                .collect(Collectors.toList());
     }
 }

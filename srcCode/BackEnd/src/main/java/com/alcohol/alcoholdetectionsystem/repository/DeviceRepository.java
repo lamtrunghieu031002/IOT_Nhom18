@@ -23,4 +23,5 @@ public interface DeviceRepository extends JpaRepository<DeviceEntity, Long> {
     long countByStatus(DeviceStatus status);
     List<DeviceEntity> findByNextCalibrationBefore(LocalDateTime dateTime);
     long countByNextCalibrationBefore(LocalDateTime dateTime);
+    List<DeviceEntity> findByDeviceIdIn(List<String> deviceIds);
 }

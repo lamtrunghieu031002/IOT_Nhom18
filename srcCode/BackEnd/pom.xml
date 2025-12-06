@@ -95,8 +95,22 @@
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+        <dependency>
+            <groupId>io.ultreia</groupId>
+            <artifactId>bluecove</artifactId>
+            <version>2.1.1</version>
+        </dependency>
 	</dependencies>
-
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+        <repository>
+            <id>ultreia-nexus-releases</id>
+            <url>https://nexus.ultreia.io/repository/bluecove-release</url>
+        </repository>
+    </repositories>
 	<build>
 		<plugins>
 			<plugin>
