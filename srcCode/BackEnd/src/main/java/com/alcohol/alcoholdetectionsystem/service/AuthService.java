@@ -93,7 +93,7 @@ public class AuthService {
     }
 
     public LoginResponse login(LoginRequest login) {
-        UserEntity userEntity = userRepository.findByUsername(login.getUsername()).orElseThrow(() -> new IllegalArgumentException("Username not found"));
+        UserEntity userEntity = userRepository.findByUsernameAndIsDeletedFalse(login.getUsername()).orElseThrow(() -> new IllegalArgumentException("Username not found"));
         if (!passwordEncoder.matches(login.getPassword(), userEntity.getPassword())){
             throw new IllegalArgumentException("Wrong password");
         }
