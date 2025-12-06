@@ -1,6 +1,7 @@
 package com.alcohol.alcoholdetectionsystem.controller;
 
 import com.alcohol.alcoholdetectionsystem.dto.request.DeviceRegisterRequest;
+import com.alcohol.alcoholdetectionsystem.dto.request.DeviceScanCheckRequest; // <--- THÊM IMPORT NÀY
 import com.alcohol.alcoholdetectionsystem.dto.response.*;
 import com.alcohol.alcoholdetectionsystem.service.DeviceService;
 import jakarta.validation.Valid;
@@ -18,6 +19,25 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DeviceController {
     private final DeviceService deviceService;
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
+    @PostMapping("/check-batch")
+    public ResponseEntity<ApiResponse<List<DeviceResponse>>> checkDevicesBatch(
+            @RequestBody DeviceScanCheckRequest request) {
+        try {
+            // Gọi Service để lọc ra các thiết bị có trong DB
+            List<DeviceResponse> foundDevices = deviceService.checkBatchDevices(request.getMacAddresses());
+
+            String message = foundDevices.isEmpty()
+                    ? "Không tìm thấy thiết bị nào đã đăng ký."
+                    : "Tìm thấy " + foundDevices.size() + " thiết bị đã đăng ký.";
+
+            return ResponseEntity.ok(new ApiResponse<>(true, message, foundDevices));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(false, e.getMessage(), null));
+        }
+    }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'OFFICER')")
     @PostMapping("/register")

@@ -1,7 +1,6 @@
 package ui.user;
 
 import model.Device;
-import model.DevicePageResponse;
 import service.ApiClient;
 
 import javax.swing.*;
@@ -15,21 +14,17 @@ public class ConnectionPanel extends JPanel {
 
     private JTable deviceTable;
     private DefaultTableModel tableModel;
-    private final String[] columnNames = {"Device ID", "Tên thiết bị", "Model", "Trạng thái"};
+    private final String[] columnNames = {"Device ID", "Tên thiết bị", "Model", "Trạng thái", "Ngày tạo"};
 
-    private JButton loadButton;
-    private JLabel loadingLabel;
-
-    // Paging
-    private int currentPage = 1;
-    private final int pageSize = 10;
+    private JButton scanButton;
+    private JLabel statusLabel;
 
     public ConnectionPanel() {
         setLayout(new BorderLayout());
         setBackground(new Color(245, 247, 250));
 
         // ================= HEADER ====================
-        JLabel header = new JLabel("🔵 DANH SÁCH THIẾT BỊ", SwingConstants.CENTER);
+        JLabel header = new JLabel("🔵 KẾT NỐI THIẾT BỊ BLUETOOTH", SwingConstants.CENTER);
         header.setOpaque(true);
         header.setFont(new Font("Segoe UI", Font.BOLD, 20));
         header.setForeground(Color.WHITE);
@@ -55,12 +50,12 @@ public class ConnectionPanel extends JPanel {
         deviceTable.setSelectionForeground(Color.WHITE);
         deviceTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
+        // Custom Renderer để row chẵn lẻ đẹp mắt
         deviceTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable table, Object value,
                                                            boolean isSelected, boolean hasFocus, int row, int col) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col);
-
                 if (isSelected) {
                     c.setBackground(table.getSelectionBackground());
                     c.setForeground(table.getSelectionForeground());
@@ -80,87 +75,82 @@ public class ConnectionPanel extends JPanel {
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.setBackground(new Color(245, 247, 250));
 
-        loadButton = new JButton("🔄 Tải danh sách thiết bị");
-        loadButton.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        loadButton.setBackground(new Color(46, 204, 113));
-        loadButton.setForeground(Color.WHITE);
-        loadButton.setFocusPainted(false);
-        loadButton.setBorder(new EmptyBorder(10, 15, 10, 15));
+        scanButton = new JButton("📡 Quét & Kiểm tra Bluetooth");
+        scanButton.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        scanButton.setBackground(new Color(46, 204, 113));
+        scanButton.setForeground(Color.WHITE);
+        scanButton.setFocusPainted(false);
+        scanButton.setBorder(new EmptyBorder(10, 15, 10, 15));
 
-        bottomPanel.add(loadButton, BorderLayout.CENTER);
+        // Thêm sự kiện bấm nút
+        scanButton.addActionListener(e -> scanBluetoothDevices());
 
-        loadingLabel = new JLabel(" ", SwingConstants.CENTER);
-        loadingLabel.setFont(new Font("Segoe UI", Font.ITALIC, 13));
-        loadingLabel.setBorder(new EmptyBorder(5, 0, 10, 0));
-        loadingLabel.setForeground(new Color(100, 100, 100));
-        bottomPanel.add(loadingLabel, BorderLayout.SOUTH);
+        bottomPanel.add(scanButton, BorderLayout.CENTER);
 
-        loadButton.addActionListener(e -> loadDevicePage());
+        statusLabel = new JLabel("Nhấn nút để bắt đầu quét thiết bị xung quanh...", SwingConstants.CENTER);
+        statusLabel.setFont(new Font("Segoe UI", Font.ITALIC, 13));
+        statusLabel.setBorder(new EmptyBorder(5, 0, 10, 0));
+        statusLabel.setForeground(new Color(100, 100, 100));
+        bottomPanel.add(statusLabel, BorderLayout.SOUTH);
 
         add(bottomPanel, BorderLayout.SOUTH);
-
-        // Auto load page 0
-        loadDevicePage();
     }
 
-    private void loadDevicePage() {
-        loadButton.setEnabled(false);
-        loadingLabel.setText("⏳ Đang tải danh sách thiết bị...");
+    private void scanBluetoothDevices() {
+        scanButton.setEnabled(false);
+        scanButton.setBackground(Color.GRAY);
+        statusLabel.setText("⏳ Đang quét môi trường xung quanh (Client Scanning)...");
+        statusLabel.setForeground(new Color(230, 126, 34));
 
-        new SwingWorker<DevicePageResponse, Void>() {
+        tableModel.setRowCount(0);
+
+        new SwingWorker<List<Device>, Void>() {
             @Override
-            protected DevicePageResponse doInBackground() throws Exception {
-                // status = ALL
-                return ApiClient.getInstance().getDevicesPaging("ACTIVE", currentPage, pageSize);
+            protected List<Device> doInBackground() throws Exception {
+                return ApiClient.getInstance().scanAndCheckDevices();
             }
 
             @Override
             protected void done() {
                 try {
-                    DevicePageResponse page = get();
-                    List<Device> devices = page.getDevices();
+                    List<Device> devices = get();
 
-                    tableModel.setRowCount(0);
-                    for (Device d : devices) {
-                        tableModel.addRow(new Object[]{
-                                d.getDeviceId(),
-                                d.getName(),
-                                d.getModel(),
-                                d.getStatus()
-                        });
-                    }
-
-                    loadingLabel.setText("✔ Trang " + (page.getPage() + 1)
-                            + " / " + page.getTotalPages()
-                            + " — Tổng " + page.getTotal() + " thiết bị");
-
-                } catch (Exception ex) {
-                    String msg = ex.getMessage();
-
-                    if (msg.contains("401") || msg.contains("403")) {
+                    if (devices.isEmpty()) {
+                        statusLabel.setText("Không tìm thấy thiết bị nào khớp với hệ thống.");
+                        statusLabel.setForeground(Color.RED);
                         JOptionPane.showMessageDialog(ConnectionPanel.this,
-                                "❌ Bạn không có quyền hoặc token hết hạn!",
-                                "Lỗi phân quyền",
-                                JOptionPane.ERROR_MESSAGE);
+                                "Đã quét xong nhưng không có thiết bị nào trong danh sách được đăng ký trên Server.",
+                                "Kết quả", JOptionPane.INFORMATION_MESSAGE);
                     } else {
-                        JOptionPane.showMessageDialog(ConnectionPanel.this,
-                                "❌ Lỗi tải dữ liệu: " + msg,
-                                "Lỗi API",
-                                JOptionPane.ERROR_MESSAGE);
+                        for (Device d : devices) {
+                            tableModel.addRow(new Object[]{
+                                    d.getDeviceId(), d.getName(), d.getModel(), d.getStatus(), d.getCreatedAt()
+                            });
+                        }
+                        statusLabel.setText("Tìm thấy " + devices.size() + " thiết bị hợp lệ.");
+                        statusLabel.setForeground(new Color(46, 204, 113));
                     }
-
-                    loadingLabel.setText("❌ Lỗi tải thiết bị");
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    String msg = ex.getMessage();
+                    statusLabel.setText("Lỗi: " + msg);
+                    JOptionPane.showMessageDialog(ConnectionPanel.this, "Lỗi: " + msg, "Error", JOptionPane.ERROR_MESSAGE);
                 } finally {
-                    loadButton.setEnabled(true);
+                    scanButton.setEnabled(true);
+                    scanButton.setBackground(new Color(46, 204, 113));
                 }
             }
         }.execute();
     }
 
-    // Test UI
+    // Hàm Main để test nhanh giao diện này
     public static void main(String[] args) {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {}
+
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Test Connection Panel");
+            JFrame frame = new JFrame("Test Bluetooth Scan Panel");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(900, 600);
             frame.setLocationRelativeTo(null);

@@ -502,6 +502,72 @@ public class ApiClient {
         // Nếu success = true → trả về true để Panel biết reload bảng
         return true;
     }
+    public List<Device> scanAndCheckDevices() throws Exception {
+        // Quét Bluetooth tại Client (Offline)
+        BluetoothClientScanner scanner = new BluetoothClientScanner();
+        List<String> scannedMacs;
+
+        try {
+            scannedMacs = scanner.scan();
+        } catch (Exception e) {
+            throw new Exception("Lỗi phần cứng Bluetooth: " + e.getMessage() + "\nHãy đảm bảo máy tính đã bật Bluetooth.");
+        }
+
+        if (scannedMacs.isEmpty()) {
+            return new ArrayList<>(); // Không tìm thấy gì thì không cần gọi Server
+        }
+
+        // Gọi API check-batch để lọc ra thiết bị hợp lệ
+        return checkBatchDevicesWithServer(scannedMacs);
+    }
+
+    // Hàm gọi API POST /api/devices/check-batch
+    private List<Device> checkBatchDevicesWithServer(List<String> macAddresses) throws Exception {
+        String url = BASE_URL + "/api/devices/check-batch";
+
+        // Tạo JSON Body: { "macAddresses": ["MAC1", "MAC2"] }
+        JSONObject requestBody = new JSONObject();
+        JSONArray macArray = new JSONArray();
+        for (String mac : macAddresses) {
+            macArray.put(mac);
+        }
+        requestBody.put("macAddresses", macArray);
+
+        // Gửi POST request
+        String response = sendHttpRequest("POST", url, requestBody.toString());
+        JSONObject json = new JSONObject(response);
+
+        if (!json.getBoolean("success")) {
+            throw new Exception(json.optString("message", "Lỗi kiểm tra thiết bị từ Server"));
+        }
+
+        // Parse kết quả trả về (Danh sách Device đã đăng ký)
+        JSONArray dataArray = json.optJSONArray("data");
+        List<Device> validDevices = new ArrayList<>();
+
+        if (dataArray == null) return validDevices;
+
+        java.time.format.DateTimeFormatter outputFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        for (int i = 0; i < dataArray.length(); i++) {
+            JSONObject o = dataArray.getJSONObject(i);
+
+            String deviceId = o.getString("deviceId");
+            String name = o.optString("name", "Unknown");
+            String model = o.optString("model", "N/A");
+            String status = o.optString("status", "UNKNOWN");
+
+            String createdAtRaw = o.optString("createdAt", null);
+            String createdAtFormatted = "N/A";
+            if (createdAtRaw != null && createdAtRaw.length() >= 10) {
+                createdAtFormatted = createdAtRaw.substring(0, 10); // Lấy nhanh ngày
+            }
+
+            validDevices.add(new Device(deviceId, name, model, createdAtFormatted, status));
+        }
+
+        return validDevices;
+    }
 
     // ... Các phương thức API khác ...
 }
