@@ -3,6 +3,7 @@ package service;
 import model.Device;
 import model.DevicePageResponse;
 import model.MeasurementHistory;
+import model.MeasurementStatics;
 import model.User;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -10,6 +11,7 @@ import org.json.JSONObject;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -242,18 +244,120 @@ public class ApiClient {
 
         return true; // Thành công
     }
-    public List<MeasurementHistory> getAllHistory() throws Exception {
-        // Thực hiện API GET /api/history
-        System.out.println("API Call: GET /api/history");
-        Thread.sleep(1000);
 
-        // Dữ liệu giả định
-        List<MeasurementHistory> mockHistory = new ArrayList<>();
-        mockHistory.add(new MeasurementHistory(1, "Nguyễn C", "12345", "HN", "2025-11-20 10:00", "AM-100", 0.25));
-        mockHistory.add(new MeasurementHistory(2, "Trần D", "67890", "HCM", "2025-11-20 14:30", "AT-200", 0.00));
-        mockHistory.add(new MeasurementHistory(3, "Phạm E", "11223", "ĐN", "2025-11-21 08:00", "AM-100", 0.55));
-        return mockHistory;
+    public List<MeasurementHistory> getAllHistory() throws Exception {
+
+        String url = BASE_URL + "/api/measurements?page=1&size=10";
+
+        String response = sendHttpRequest("GET", url, null);
+        JSONObject json = new JSONObject(response);
+
+        if (!json.getBoolean("success")) {
+            throw new Exception(json.optString("message", "Lỗi tải lịch sử đo"));
+        }
+
+        JSONObject data = json.getJSONObject("data");
+        JSONArray arr = data.getJSONArray("measurements");
+
+        List<MeasurementHistory> list = new ArrayList<>();
+
+        // format datetime
+        java.time.format.DateTimeFormatter input =
+                java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        java.time.format.DateTimeFormatter out =
+                java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.getJSONObject(i);
+
+            int id = o.getInt("id");
+            String subjectName = o.getString("subjectName");
+            double alc = o.getDouble("alcoholLevel");
+
+            // Add mg/L
+            String alcoholLevel = alc + " mg/L";
+
+            String violationLevel = o.getString("violationLevel").toUpperCase();
+
+            // ====== FORMAT THỜI GIAN ======
+            String testTimeRaw = o.optString("testTime", null);
+            String testTimeFormatted = "Không có";
+
+            if (testTimeRaw != null && !testTimeRaw.equals("null") && testTimeRaw.length() >= 19) {
+                testTimeRaw = testTimeRaw.substring(0, 19);
+                testTimeFormatted = out.format(java.time.LocalDateTime.parse(testTimeRaw, input));
+            }
+
+            // ====== LOCATION LÀ TỈNH/THÀNH (bạn tự đổi theo mong muốn) ======
+            String location = o.optString("location", "Không rõ");
+
+            // ====== OFFICER ======
+            String officerFullName = o.optString("officerFullName", "Không rõ");
+
+            list.add(new MeasurementHistory(
+                    id,
+                    subjectName,
+                    alcoholLevel,
+                    violationLevel,
+                    testTimeFormatted,
+                    location,
+                    officerFullName
+            ));
+        }
+
+        return list;
     }
+
+    public MeasurementStatics getStatistics(String startDate, String endDate) throws Exception {
+        String url = BASE_URL + "/api/measurements/statistics?startDate="
+                + URLEncoder.encode(startDate, StandardCharsets.UTF_8.name())
+                + "&endDate="
+                + URLEncoder.encode(endDate, StandardCharsets.UTF_8.name());
+
+        // Gọi API (sendHttpRequest trả về String response body)
+        String response = sendHttpRequest("GET", url, null);
+
+        // Parse JSON response
+        JSONObject json = new JSONObject(response);
+
+        // Kiểm tra success
+        boolean ok = json.optBoolean("success", false);
+        if (!ok) {
+            throw new Exception(json.optString("message", "Không lấy được thống kê"));
+        }
+
+        JSONObject dataJson = json.optJSONObject("data");
+        if (dataJson == null) {
+            throw new Exception("Response không có trường data");
+        }
+
+        MeasurementStatics stats = new MeasurementStatics();
+        stats.success = true;
+        stats.message = json.optString("message", null);
+
+        MeasurementStatics.Data data = new MeasurementStatics.Data();
+        data.totalTests = dataJson.optInt("totalTests", 0);
+        data.violations = dataJson.optInt("violations", 0);
+        data.averageLevel = dataJson.optDouble("averageLevel", 0.0);
+
+        JSONObject byLevelJson = dataJson.optJSONObject("byLevel");
+        MeasurementStatics.ByLevel by = new MeasurementStatics.ByLevel();
+        if (byLevelJson != null) {
+            by.high = byLevelJson.optInt("high", 0);
+            by.low  = byLevelJson.optInt("low", 0);
+            by.none = byLevelJson.optInt("none", 0);
+        } else {
+            by.high = by.low = by.none = 0;
+        }
+        data.byLevel = by;
+
+        stats.data = data;
+        return stats;
+    }
+
+
+
+
     public Map<String, Double> getAgeBasedStatistics() throws Exception {
         // Thực hiện API GET /api/statistics/age-based
         System.out.println("API Call: GET /api/statistics/age-based");

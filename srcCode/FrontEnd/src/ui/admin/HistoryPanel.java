@@ -13,7 +13,14 @@ public class HistoryPanel extends JPanel {
     private JTable historyTable;
     private DefaultTableModel tableModel;
     private final String[] columnNames =
-            {"ID", "Tên", "CCCD", "Quê quán", "Thời gian đo", "Thiết bị đo", "Kết quả đo"};
+            {"ID", "Người đo", "Mức cồn", "Mức vi phạm", "Thời gian đo", "Địa điểm", "Cảnh sát đo"};
+
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages = 1;
+
+    private JLabel pageInfoLabel;
+    private JButton prevBtn, nextBtn;
 
     public HistoryPanel() {
         setLayout(new BorderLayout(10, 10));
@@ -72,8 +79,9 @@ public class HistoryPanel extends JPanel {
         buttonPanel.setBackground(Color.WHITE);
         buttonPanel.add(statisticsButton);
 
-        statisticsButton.addActionListener(e -> new StatisticsDialog(this).setVisible(true));
-
+        statisticsButton.addActionListener(e ->
+                new StatisticsDialog(SwingUtilities.getWindowAncestor(this)).setVisible(true)
+        );
         add(title, BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
@@ -100,13 +108,14 @@ public class HistoryPanel extends JPanel {
                     for (MeasurementHistory item : history) {
                         tableModel.addRow(new Object[]{
                                 item.getId(),
-                                item.getName(),
-                                item.getCccd(),
-                                item.getHometown(),
-                                item.getTime(),
-                                item.getDevice(),
-                                item.getResult()
+                                item.getSubjectName(),
+                                item.getAlcoholLevel(),
+                                item.getViolationLevel(),
+                                item.getTestTime(),
+                                item.getLocation(),
+                                item.getOfficerFullName()
                         });
+
                     }
 
                     resizeColumns(historyTable);

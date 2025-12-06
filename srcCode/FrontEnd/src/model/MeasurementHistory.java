@@ -1,30 +1,33 @@
 package model;
 
 public class MeasurementHistory {
-    private Integer id;
-    private String name;
-    private String cccd;
-    private String hometown;
-    private String time;
-    private String device;
-    private double result;
 
-    public MeasurementHistory(Integer id, String name, String cccd, String hometown, String time, String device, double result) {
+    private int id;
+    private String subjectName;
+    private String alcoholLevel;   // "8.77 mg/L"
+    private String violationLevel; // "HIGH"
+    private String testTime;       //  "06/12/2025 21:16"
+    private String location;       // Hà Nội
+    private String officerFullName;
+
+    public MeasurementHistory(int id, String subjectName, String alcoholLevel,
+                              String violationLevel, String testTime,
+                              String location, String officerFullName) {
         this.id = id;
-        this.name = name;
-        this.cccd = cccd;
-        this.hometown = hometown;
-        this.time = time;
-        this.device = device;
-        this.result = result;
+        this.subjectName = subjectName;
+        this.alcoholLevel = alcoholLevel;
+        this.violationLevel = violationLevel;
+        this.testTime = testTime;
+        this.location = location;
+        this.officerFullName = officerFullName;
     }
 
-    // Getters
-    public Integer getId() { return id; }
-    public String getName() { return name; }
-    public String getCccd() { return cccd; }
-    public String getHometown() { return hometown; }
-    public String getTime() { return time; }
-    public String getDevice() { return device; }
-    public double getResult() { return result; }
+    public int getId() { return id; }
+    public String getSubjectName() { return subjectName; }
+    public String getAlcoholLevel() { return alcoholLevel; }
+    public String getViolationLevel() { return violationLevel; }
+    public String getTestTime() { return testTime; }
+    public String getLocation() { return location; }
+    public String getOfficerFullName() { return officerFullName; }
+
 }

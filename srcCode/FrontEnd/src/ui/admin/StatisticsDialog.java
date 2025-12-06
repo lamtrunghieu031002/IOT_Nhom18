@@ -1,74 +1,115 @@
 package ui.admin;
 
+import model.MeasurementStatics;
 import service.ApiClient;
 
 import javax.swing.*;
 import java.awt.*;
-import java.util.Map;
-// Cần thêm thư viện JFreeChart vào project để lớp này hoạt động
-// import org.jfree.chart.*;
-// import org.jfree.data.category.DefaultCategoryDataset;
 
 public class StatisticsDialog extends JDialog {
 
-    public StatisticsDialog(JPanel parent) {
-        super((JFrame) SwingUtilities.getWindowAncestor(parent), "Thống kê Nồng độ Cồn theo Độ tuổi", true);
+    private JLabel totalTestsLbl;
+    private JLabel violationsLbl;
+    private JLabel avgLevelLbl;
+    private JLabel highLbl;
+    private JLabel lowLbl;
+    private JLabel noneLbl;
 
-        setLayout(new BorderLayout());
-        setSize(800, 500);
-        setLocationRelativeTo(parent);
+    private JTextField startDateField;
+    private JTextField endDateField;
+    private JButton loadBtn;
 
-        JLabel loadingLabel = new JLabel("Đang tải dữ liệu thống kê...", SwingConstants.CENTER);
-        add(loadingLabel, BorderLayout.CENTER);
+    public StatisticsDialog(Window owner) {
+        super(owner, "📊 Thống kê lịch sử đo", ModalityType.APPLICATION_MODAL);
+        setSize(450, 420);
+        setLocationRelativeTo(owner);
+        setLayout(new BorderLayout(10, 10));
 
-        loadStatisticsData();
+        // ==== PANEL NHẬP NGÀY ====
+        JPanel datePanel = new JPanel(new GridLayout(2, 2, 10, 10));
+        datePanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        startDateField = new JTextField("2025-01-01");
+        endDateField = new JTextField("2025-12-31");
+
+        datePanel.add(new JLabel("Từ ngày (yyyy-MM-dd):"));
+        datePanel.add(startDateField);
+        datePanel.add(new JLabel("Đến ngày (yyyy-MM-dd):"));
+        datePanel.add(endDateField);
+
+        add(datePanel, BorderLayout.NORTH);
+
+        // ==== PANEL HIỂN THỊ THỐNG KÊ ====
+        JPanel panel = new JPanel(new GridLayout(0, 1, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        totalTestsLbl = new JLabel();
+        violationsLbl = new JLabel();
+        avgLevelLbl = new JLabel();
+        highLbl = new JLabel();
+        lowLbl = new JLabel();
+        noneLbl = new JLabel();
+
+        panel.add(totalTestsLbl);
+        panel.add(violationsLbl);
+        panel.add(avgLevelLbl);
+        panel.add(new JLabel("------- Mức Vi Phạm -------"));
+        panel.add(highLbl);
+        panel.add(lowLbl);
+        panel.add(noneLbl);
+
+        add(panel, BorderLayout.CENTER);
+
+        // ==== NÚT TẢI THỐNG KÊ ====
+        loadBtn = new JButton("Tải thống kê");
+        loadBtn.addActionListener(e -> loadStatistics());
+        add(loadBtn, BorderLayout.SOUTH);
     }
 
-    private void loadStatisticsData() {
-        new SwingWorker<Map<String, Double>, Void>() {
+    private void loadStatistics() {
+        String start = startDateField.getText().trim();
+        String end = endDateField.getText().trim();
+
+        // Kiểm tra định dạng
+        if (!start.matches("\\d{4}-\\d{2}-\\d{2}") ||
+                !end.matches("\\d{4}-\\d{2}-\\d{2}")) {
+
+            JOptionPane.showMessageDialog(this,
+                    "Định dạng ngày phải là yyyy-MM-dd",
+                    "Sai định dạng ngày",
+                    JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Chuyển thành ISO8601
+        String startIso = start + "T00:00:00.000Z";
+        String endIso = end + "T23:59:59.999Z";
+
+        new SwingWorker<MeasurementStatics, Void>() {
             @Override
-            protected Map<String, Double> doInBackground() throws Exception {
-                return ApiClient.getInstance().getAgeBasedStatistics();
+            protected MeasurementStatics doInBackground() throws Exception {
+                return ApiClient.getInstance().getStatistics(startIso, endIso);
             }
 
             @Override
             protected void done() {
-                remove(getComponent(0)); // Xóa loading label
                 try {
-                    Map<String, Double> data = get();
+                    MeasurementStatics stats = get();
 
-                    // --- BƯỚC VẼ BIỂU ĐỒ (Cần JFreeChart) ---
-                    // DefaultCategoryDataset dataset = createDataset(data);
-                    // JFreeChart lineChart = ChartFactory.createLineChart(...);
-                    // ChartPanel chartPanel = new ChartPanel(lineChart);
-                    // add(chartPanel, BorderLayout.CENTER);
+                    totalTestsLbl.setText("Tổng số lần đo: " + stats.data.totalTests);
+                    violationsLbl.setText("Số lần vi phạm: " + stats.data.violations);
+                    avgLevelLbl.setText("Mức cồn trung bình: " + stats.data.averageLevel);
 
-                    // Thay thế bằng một JLabel đơn giản nếu không có JFreeChart:
-                    JTextArea resultArea = new JTextArea("Dữ liệu thống kê đã tải:\n");
-                    data.forEach((age, avg) -> resultArea.append(age + " tuổi: " + String.format("%.2f", avg) + " mg/L\n"));
-                    add(new JScrollPane(resultArea), BorderLayout.CENTER);
-                    // --- END BƯỚC VẼ BIỂU ĐỒ ---
+                    highLbl.setText("Mức cao (high): " + stats.data.byLevel.high);
+                    lowLbl.setText("Mức thấp (low): " + stats.data.byLevel.low);
+                    noneLbl.setText("Không vi phạm (none): " + stats.data.byLevel.none);
 
-                    revalidate();
-                    repaint();
-                } catch (Exception e) {
+                } catch (Exception ex) {
                     JOptionPane.showMessageDialog(StatisticsDialog.this,
-                            "Lỗi khi tải dữ liệu thống kê: " + e.getMessage(),
+                            "Lỗi tải thống kê: " + ex.getMessage(),
                             "Lỗi API", JOptionPane.ERROR_MESSAGE);
-                    dispose();
                 }
             }
         }.execute();
     }
-
-    // Phương thức tạo Dataset (Nếu sử dụng JFreeChart)
-    /*
-    private DefaultCategoryDataset createDataset(Map<String, Double> data) {
-        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        for (Map.Entry<String, Double> entry : data.entrySet()) {
-            dataset.addValue(entry.getValue(), "Nồng độ trung bình", entry.getKey());
-        }
-        return dataset;
-    }
-    */
 }
