@@ -121,7 +121,7 @@ public class ApiClient {
         return userId;
     }
 
-    // --- Phương thức Quản lý Thiết bị (Giả định) ---
+    // --- Phương thức Quản lý Thiết bị  ---
 
     public DevicePageResponse getDevicesPaging(String status, int page, int size) throws Exception {
         String url = BASE_URL + "/api/devices?status=" + status + "&page=" + page + "&size=" + size;
@@ -131,24 +131,44 @@ public class ApiClient {
         JSONObject json = new JSONObject(response);
 
         if (!json.getBoolean("success")) {
-            throw new Exception(json.getString("message"));
+            throw new Exception(json.optString("message", "Lỗi tải danh sách thiết bị"));
         }
 
         JSONObject data = json.getJSONObject("data");
-
-        // Parse devices
         JSONArray arr = data.getJSONArray("devices");
         List<Device> deviceList = new ArrayList<>();
 
+        // Định dạng ngày đẹp: dd/MM/yyyy HH:mm
+        java.time.format.DateTimeFormatter inputFormatter = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        java.time.format.DateTimeFormatter outputFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
         for (int i = 0; i < arr.length(); i++) {
             JSONObject o = arr.getJSONObject(i);
-            deviceList.add(new Device(
-                    o.getString("deviceId"),
-                    o.getString("name"),
-                    o.getString("model"),
-                    o.getString("createdAt"),
-                    o.getString("status")
-            ));
+
+            String deviceId = o.getString("deviceId");
+            String name = o.getString("name");
+            String model = o.getString("model");
+            String statusStr = o.getString("status");
+
+            // === XỬ LÝ NGÀY TẠO ĐẸP ===
+            String createdAtRaw = o.optString("createdAt", null);
+            String createdAtFormatted = "Chưa xác định";
+
+            if (createdAtRaw != null && !createdAtRaw.equals("null") && createdAtRaw.length() >= 19) {
+                try {
+                    // Cắt bỏ phần nano nếu có (ví dụ: .311028 → chỉ lấy đến giây)
+                    String cleanIso = createdAtRaw.substring(0, 19); // 2025-11-25T08:00:45
+                    java.time.LocalDateTime ldt = java.time.LocalDateTime.parse(cleanIso);
+                    createdAtFormatted = ldt.format(outputFormatter);
+                } catch (Exception e) {
+                    // Nếu parse lỗi → chỉ lấy ngày
+                    createdAtFormatted = createdAtRaw.substring(0, 10).replace("-", "/");
+                }
+            }
+
+            // Tạo Device với ngày đã được format đẹp
+            Device device = new Device(deviceId, name, model, createdAtFormatted, statusStr);
+            deviceList.add(device);
         }
 
         return new DevicePageResponse(
@@ -193,11 +213,34 @@ public class ApiClient {
         return true;
     }
 
+//    User
+    // --- THÊM TÀI KHOẢN MỚI THẬT QUA API /api/auth/register ---
     public boolean addUser(Map<String, String> data) throws Exception {
-        // Thực hiện API POST /api/users/add hoặc tương tự
-        System.out.println("API Call: POST /api/users/add with data: " + data.keySet());
-        Thread.sleep(1000); // Giả lập độ trễ API
-        return true;
+        String url = BASE_URL + "/api/auth/register";
+
+        // Tạo request body đúng format API yêu cầu
+        JSONObject requestBody = new JSONObject();
+        requestBody.put("username", data.get("username"));
+        requestBody.put("password", data.get("password"));
+        requestBody.put("email", data.get("email"));
+        requestBody.put("fullName", data.get("fullName"));
+
+        // Chuyển role tiếng Việt → mã role backend hiểu
+        String roleVi = data.get("role");
+        String roleEn = roleVi.equals("Quản lý") ? "ADMIN" : "OFFICER";
+        requestBody.put("role", roleEn);
+
+        // Gửi POST request
+        String response = sendHttpRequest("POST", url, requestBody.toString());
+
+        JSONObject jsonResponse = new JSONObject(response);
+
+        if (!jsonResponse.getBoolean("success")) {
+            String msg = jsonResponse.optString("message", "Đăng ký thất bại");
+            throw new Exception(msg);
+        }
+
+        return true; // Thành công
     }
     public List<MeasurementHistory> getAllHistory() throws Exception {
         // Thực hiện API GET /api/history
@@ -231,19 +274,128 @@ public class ApiClient {
         return true;
     }
 
-    // --- Phương thức Quản lý Tài khoản (Giả định) ---
     public List<User> getAllUsers() throws Exception {
-        // Thực hiện API GET /api/users
-        Thread.sleep(1000);
+        String url = BASE_URL + "/api/users";
+
+        String response = sendHttpRequest("GET", url, null);
+
+        JSONObject jsonResponse = new JSONObject(response);
+
+        if (!jsonResponse.getBoolean("success")) {
+            String msg = jsonResponse.optString("message", "Lỗi không xác định từ server");
+            throw new Exception(msg);
+        }
+
+        JSONArray dataArray = jsonResponse.getJSONArray("data");
         List<User> users = new ArrayList<>();
-        users.add(new User(1, "admin", "Nguyễn Văn A", "a@example.com", "Quản lý", "2025-11-01"));
-        users.add(new User(2, "user01", "Trần Thị B", "b@example.com", "Người đo", "2025-11-10"));
+
+        for (int i = 0; i < dataArray.length(); i++) {
+            JSONObject obj = dataArray.getJSONObject(i);
+
+            // Bỏ qua tài khoản đã bị xóa mềm
+            if (obj.has("deleted") && obj.getBoolean("deleted")) {
+                continue;
+            }
+
+            Integer id = obj.getInt("id");
+            String username = obj.getString("username");
+            String fullName = obj.getString("fullName");
+            String email = obj.getString("email");
+            String role = obj.getString("role");
+
+            // Parse createdAt (ví dụ: "2025-11-25T08:00:45.311028")
+            String createdAtStr = obj.optString("createdAt", null);
+            String dateFormatted = "N/A";
+            if (createdAtStr != null && !createdAtStr.equals("null")) {
+                try {
+                    // Cắt chuỗi nếu quá dài (nano → micro)
+                    if (createdAtStr.length() > 19) {
+                        createdAtStr = createdAtStr.substring(0, 19); // chỉ lấy đến giây
+                    }
+                    java.time.LocalDateTime ldt = java.time.LocalDateTime.parse(
+                            createdAtStr.replace("T", " ").substring(0, 19),
+                            java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    );
+                    dateFormatted = ldt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+                } catch (Exception e) {
+                    dateFormatted = createdAtStr.substring(0, 10); // fallback: chỉ lấy ngày
+                }
+            }
+
+            // Tạo User (dùng constructor hoặc setter đều được)
+            User user = new User();
+            user.setId(id);
+            user.setUsername(username);
+            user.setFullName(fullName);
+            user.setEmail(email);
+            user.setRole(role);
+            user.setDateCreated(dateFormatted); // giả sử có method này trong model.User
+
+            users.add(user);
+        }
+
         return users;
     }
 
+    // --- SỬA TÀI KHOẢN (CẬP NHẬT THÔNG TIN + ĐỔI MẬT KHẨU) ---
+    public boolean updateUser(int userId, Map<String, String> data) throws Exception {
+        String url = BASE_URL + "/api/users/" + userId;
+
+        JSONObject requestBody = new JSONObject();
+
+        // Chỉ thêm các field có giá trị (tránh gửi password rỗng)
+        String fullName = data.get("fullName");
+        String roleVi = data.get("role");
+        String password = data.get("password");
+
+        if (fullName != null && !fullName.trim().isEmpty()) {
+            requestBody.put("fullName", fullName.trim());
+        }
+
+        // Chuyển role tiếng Việt → backend (ADMIN / OFFICER)
+        String roleEn = roleVi.equals("Quản lý") ? "ADMIN" : "OFFICER";
+        requestBody.put("role", roleEn);
+
+        // Chỉ gửi password nếu người dùng nhập (không bắt buộc)
+        if (password != null && !password.trim().isEmpty()) {
+            if (password.length() < 6) {
+                throw new Exception("Mật khẩu mới phải ít nhất 6 ký tự!");
+            }
+            requestBody.put("password", password.trim());
+        }
+
+        // Nếu không có gì để cập nhật → báo lỗi
+        if (requestBody.length() == 1 && requestBody.has("role")) {
+            // Chỉ có role → vẫn cho phép cập nhật
+        } else if (requestBody.length() == 0) {
+            throw new Exception("Không có thông tin nào để cập nhật.");
+        }
+
+        String response = sendHttpRequest("PUT", url, requestBody.toString());
+
+        JSONObject jsonResponse = new JSONObject(response);
+
+        if (!jsonResponse.getBoolean("success")) {
+            String msg = jsonResponse.optString("message", "Cập nhật thất bại");
+            throw new Exception(msg);
+        }
+
+        return true;
+    }
+    // --- XÓA TÀI KHOẢN THẬT QUA API ---
     public boolean deleteUser(int userId) throws Exception {
-        // Thực hiện API DELETE /api/users/{userId}
-        Thread.sleep(500);
+        String url = BASE_URL + "/api/users/" + userId;
+
+        String response = sendHttpRequest("DELETE", url, null);
+
+        JSONObject jsonResponse = new JSONObject(response);
+
+        if (!jsonResponse.getBoolean("success")) {
+            String message = jsonResponse.optString("message", "Xóa tài khoản thất bại");
+            throw new Exception(message);
+        }
+
+        // Nếu success = true → trả về true để Panel biết reload bảng
         return true;
     }
 

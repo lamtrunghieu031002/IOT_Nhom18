@@ -53,12 +53,14 @@ public class AccountManagementPanel extends JPanel {
 
         // === BUTTONS ===
         JButton addButton = buildButton("➕ Thêm Tài khoản", new Color(46, 204, 113));
+        JButton editButton = buildButton("Cập nhật Tài khoản", new Color(52, 152, 219));
         JButton deleteButton = buildButton("➖ Xóa Tài khoản", new Color(231, 76, 60));
         JButton refreshButton = buildButton("🔄 Tải lại", new Color(52, 152, 219));
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         buttonPanel.setBackground(Color.WHITE);
         buttonPanel.add(addButton);
+        buttonPanel.add(editButton);
         buttonPanel.add(deleteButton);
         buttonPanel.add(refreshButton);
 
@@ -67,6 +69,7 @@ public class AccountManagementPanel extends JPanel {
 
         // Event
         addButton.addActionListener(e -> new AddAccountDialog(this).setVisible(true));
+        editButton.addActionListener(e -> editSelectedAccount());
         deleteButton.addActionListener(e -> deleteSelectedAccount());
         refreshButton.addActionListener(e -> loadAccounts());
 
@@ -109,6 +112,24 @@ public class AccountManagementPanel extends JPanel {
                 }
             }
         }.execute();
+    }
+
+    private void editSelectedAccount() {
+        int selectedRow = accountTable.getSelectedRow();
+        if (selectedRow == -1) {
+            JOptionPane.showMessageDialog(this, "Vui lòng chọn tài khoản muốn cập nhật!",
+                    "Chưa chọn", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Number idNumber = (Number) tableModel.getValueAt(selectedRow, 0);
+        long userId = idNumber.longValue();  // hoặc int userId = idNumber.intValue();
+        String username = (String) tableModel.getValueAt(selectedRow, 1);
+        String fullName = (String) tableModel.getValueAt(selectedRow, 2);
+        String email = (String) tableModel.getValueAt(selectedRow, 3);
+        String roleVi = (String) tableModel.getValueAt(selectedRow, 4); // "Quản lý" hoặc "Người đo"
+
+        new EditAccountDialog(this, userId, username, fullName, email, roleVi).setVisible(true);
     }
 
     // ===================================================================

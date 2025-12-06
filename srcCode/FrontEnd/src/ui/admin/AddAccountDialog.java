@@ -59,21 +59,37 @@ public class AddAccountDialog extends JDialog {
     }
 
     private void addAccount() {
+        String username = usernameField.getText().trim();
         String password = new String(passwordField.getPassword());
         String confirmPassword = new String(confirmPasswordField.getPassword());
+        String fullName = fullNameField.getText().trim();
+        String email = emailField.getText().trim();
+        String roleDisplay = (String) roleComboBox.getSelectedItem(); // "Quản lý" hoặc "Người đo"
+
+        // === Validate ===
+        if (username.isEmpty() || password.isEmpty() || fullName.isEmpty() || email.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng điền đầy đủ thông tin.", "Thiếu dữ liệu", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
         if (!password.equals(confirmPassword)) {
-            JOptionPane.showMessageDialog(this, "Mật khẩu và xác nhận mật khẩu không khớp.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Mật khẩu và xác nhận không khớp!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        if (password.length() < 6) {
+            JOptionPane.showMessageDialog(this, "Mật khẩu phải ít nhất 6 ký tự.", "Lỗi", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         Map<String, String> data = new HashMap<>();
-        data.put("username", usernameField.getText());
+        data.put("username", username);
         data.put("password", password);
-        data.put("fullName", fullNameField.getText());
-        data.put("email", emailField.getText());
-        data.put("role", (String) roleComboBox.getSelectedItem());
+        data.put("fullName", fullName);
+        data.put("email", email);
+        data.put("role", roleDisplay); // Gửi đúng: "Quản lý" hoặc "Người đo"
 
+        // === Gửi API ===
         new SwingWorker<Boolean, Void>() {
             @Override
             protected Boolean doInBackground() throws Exception {
@@ -84,14 +100,16 @@ public class AddAccountDialog extends JDialog {
             protected void done() {
                 try {
                     if (get()) {
-                        JOptionPane.showMessageDialog(AddAccountDialog.this, "Thêm tài khoản thành công!", "Hoàn tất", JOptionPane.INFORMATION_MESSAGE);
-                        parentPanel.loadAccounts();
-                        dispose();
-                    } else {
-                        JOptionPane.showMessageDialog(AddAccountDialog.this, "Lỗi khi thêm tài khoản.", "Lỗi API", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(AddAccountDialog.this,
+                                "Thêm tài khoản thành công!\nUsername: " + username,
+                                "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                        parentPanel.loadAccounts(); // Tải lại bảng
+                        dispose(); // Đóng dialog
                     }
-                } catch (Exception e) {
-                    JOptionPane.showMessageDialog(AddAccountDialog.this, "Lỗi kết nối hoặc xử lý dữ liệu: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(AddAccountDialog.this,
+                            "Lỗi khi thêm tài khoản:\n" + ex.getMessage(),
+                            "Thất bại", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }.execute();
