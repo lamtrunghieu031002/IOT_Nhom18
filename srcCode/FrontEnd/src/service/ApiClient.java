@@ -503,21 +503,14 @@ public class ApiClient {
         return true;
     }
     public List<Device> scanAndCheckDevices() throws Exception {
-        // Quét Bluetooth tại Client (Offline)
-        BluetoothClientScanner scanner = new BluetoothClientScanner();
-        List<String> scannedMacs;
-
-        try {
-            scannedMacs = scanner.scan();
-        } catch (Exception e) {
-            throw new Exception("Lỗi phần cứng Bluetooth: " + e.getMessage() + "\nHãy đảm bảo máy tính đã bật Bluetooth.");
-        }
+        // 1. Nhờ Service Bluetooth quét hộ (lấy list MAC)
+        List<String> scannedMacs = BluetoothClientScanner.getInstance().scan();
 
         if (scannedMacs.isEmpty()) {
-            return new ArrayList<>(); // Không tìm thấy gì thì không cần gọi Server
+            return new ArrayList<>();
         }
 
-        // Gọi API check-batch để lọc ra thiết bị hợp lệ
+        // 2. Tự gọi API lên Server để check (Logic cũ)
         return checkBatchDevicesWithServer(scannedMacs);
     }
 
