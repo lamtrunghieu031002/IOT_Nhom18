@@ -156,9 +156,6 @@ public class ConnectionPanel extends JPanel {
         }
     }
 
-    // ================= CHỨC NĂNG THỰC TẾ =================
-
-    // 1. Quét Thiết bị (Kết hợp ApiClient và Scanner)
     private void scanBluetoothDevices() {
         btnScan.setEnabled(false);
         btnConnect.setEnabled(false);
@@ -217,16 +214,11 @@ public class ConnectionPanel extends JPanel {
         }.execute();
     }
 
-    // 2. Kết nối (GỌI THỰC TẾ VÀO SERVICE)
     private void connectDevice() {
         int selectedRow = deviceTable.getSelectedRow();
         if (selectedRow == -1) return;
 
-        // Lấy Object Device từ list tương ứng với dòng chọn
         Device device = currentDeviceList.get(selectedRow);
-
-        // GIẢ ĐỊNH: Class Device có phương thức getMacAddress().
-        // Nếu chưa có, bạn cần thêm field 'macAddress' vào model.Device
         String macAddress = device.getDeviceId();
         String deviceName = device.getName();
 
@@ -275,7 +267,6 @@ public class ConnectionPanel extends JPanel {
         }.execute();
     }
 
-    // 3. Ngắt kết nối (GỌI THỰC TẾ VÀO SERVICE)
     private void disconnectDevice() {
         if (!BluetoothClientScanner.getInstance().isConnected()) {
             return;
@@ -287,15 +278,12 @@ public class ConnectionPanel extends JPanel {
                 "Xác nhận", JOptionPane.YES_NO_OPTION);
 
         if (confirm == JOptionPane.YES_OPTION) {
-            // Thực hiện ngắt kết nối ngay lập tức (thường nhanh nên không cần SwingWorker,
-            // nhưng nếu kỹ tính có thể dùng)
             BluetoothClientScanner.getInstance().disconnect();
 
             // Cập nhật lại UI
             statusLabel.setText("Đã ngắt kết nối.");
             statusLabel.setForeground(Color.RED);
 
-            // Reset trạng thái trên bảng (tìm dòng đang "Connected" để sửa lại)
             for (int i = 0; i < tableModel.getRowCount(); i++) {
                 if ("Connected".equals(tableModel.getValueAt(i, 3))) {
                     tableModel.setValueAt("Available", i, 3);
