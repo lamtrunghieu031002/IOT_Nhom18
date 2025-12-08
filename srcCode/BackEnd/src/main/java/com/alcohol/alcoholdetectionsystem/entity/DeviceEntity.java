@@ -45,12 +45,4 @@ public class DeviceEntity {
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;
-
-    @OneToMany(
-            mappedBy = "deviceEntity",
-            cascade = CascadeType.REMOVE,
-            orphanRemoval = true
-    )
-    private List<AlcoholTestEntity> alcoholTests;
-
 }

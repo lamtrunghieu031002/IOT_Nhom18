@@ -14,14 +14,21 @@ import java.util.Optional;
 @Repository
 public interface DeviceRepository extends JpaRepository<DeviceEntity, Long> {
     boolean existsByDeviceId(String deviceId);
-    Optional<DeviceEntity> findByDeviceId(String deviceId);
     Page<DeviceEntity> findByStatus(DeviceStatus status, Pageable pageable);
-    Page<DeviceEntity> findByNameContainingIgnoreCaseOrDeviceIdContainingIgnoreCase(
-            String name, String deviceId, Pageable pageable);
     Page<DeviceEntity> findByStatusAndNameContainingIgnoreCaseOrDeviceIdContainingIgnoreCase(
             DeviceStatus status, String name, String deviceId, Pageable pageable);
     long countByStatus(DeviceStatus status);
-    List<DeviceEntity> findByNextCalibrationBefore(LocalDateTime dateTime);
     long countByNextCalibrationBefore(LocalDateTime dateTime);
-    List<DeviceEntity> findByDeviceIdIn(List<String> deviceIds);
+
+    Page<DeviceEntity> findByStatusNotAndNameContainingIgnoreCaseOrDeviceIdContainingIgnoreCase(DeviceStatus deviceStatus, String search, String search1, Pageable pageable);
+
+    Page<DeviceEntity> findByStatusNot(DeviceStatus deviceStatus, Pageable pageable);
+
+    List<DeviceEntity> findByNextCalibrationBeforeAndStatusNot(LocalDateTime now, DeviceStatus deviceStatus);
+
+    List<DeviceEntity> findByDeviceIdInAndStatusNot(List<String> macAddresses, DeviceStatus deviceStatus);
+
+    Optional<DeviceEntity> findByDeviceIdAndStatusNot(String deviceId, DeviceStatus deviceStatus);
+
+    Optional<DeviceEntity> findByDeviceId(String deviceId);
 }

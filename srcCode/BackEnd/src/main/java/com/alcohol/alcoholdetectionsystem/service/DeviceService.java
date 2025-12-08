@@ -80,9 +80,9 @@ public class DeviceService {
             DeviceStatus deviceStatus = DeviceStatus.valueOf(status);
             devicePage = deviceRepository.findByStatus(deviceStatus, pageable);
         } else if (hasSearch) {
-            devicePage = deviceRepository.findByNameContainingIgnoreCaseOrDeviceIdContainingIgnoreCase(search, search, pageable);
+            devicePage = deviceRepository.findByStatusNotAndNameContainingIgnoreCaseOrDeviceIdContainingIgnoreCase(DeviceStatus.INACTIVE, search, search, pageable);
         } else {
-            devicePage = deviceRepository.findAll(pageable);
+            devicePage = deviceRepository.findByStatusNot(DeviceStatus.INACTIVE, pageable);
         }
 
         List<DeviceResponse> devices = devicePage.getContent().stream()
@@ -102,16 +102,17 @@ public class DeviceService {
     public void deleteDevice(String deviceId) {
         DeviceEntity deviceEntity = deviceRepository.findByDeviceId(deviceId)
                 .orElseThrow(() -> new IllegalArgumentException("Device not found"));
-        deviceRepository.delete(deviceEntity);
+        deviceEntity.setStatus(DeviceStatus.INACTIVE);
+        deviceRepository.save(deviceEntity);
     }
 
     public DeviceResponse getDeviceById(String deviceId) {
-        DeviceEntity device = deviceRepository.findByDeviceId(deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+        DeviceEntity device = deviceRepository.findByDeviceIdAndStatusNot(deviceId, DeviceStatus.INACTIVE).orElseThrow(() -> new IllegalArgumentException("Device not found"));
         return toDeviceResponse(device);
     }
 
     public DeviceCheckResponse checkDevice(String deviceId) {
-        DeviceEntity deviceEntity = deviceRepository.findByDeviceId(deviceId).orElseThrow(() -> new IllegalArgumentException("Device not found"));
+        DeviceEntity deviceEntity = deviceRepository.findByDeviceIdAndStatusNot(deviceId, DeviceStatus.INACTIVE).orElseThrow(() -> new IllegalArgumentException("Device not found"));
         return DeviceCheckResponse.builder()
                 .deviceId(deviceEntity.getDeviceId())
                 .deviceName(deviceEntity.getName())
@@ -123,7 +124,7 @@ public class DeviceService {
     }
 
     public DeviceResponse updateDeviceStatus(String deviceId, String status) {
-        DeviceEntity device = deviceRepository.findByDeviceId(deviceId)
+        DeviceEntity device = deviceRepository.findByDeviceIdAndStatusNot(deviceId, DeviceStatus.INACTIVE)
                 .orElseThrow(() -> new IllegalArgumentException("Device not found"));
 
         try {
@@ -137,8 +138,8 @@ public class DeviceService {
     }
 
     public DeviceResponse updateCalibration(String deviceId) {
-        DeviceEntity device = deviceRepository.findByDeviceId(deviceId)
-                .orElseThrow(() -> new IllegalArgumentException("Device not found"));
+        DeviceEntity device = deviceRepository.findByDeviceIdAndStatusNot(deviceId, DeviceStatus.INACTIVE)
+                .orElseThrow(() -> new IllegalArgumentException("Device not found or is inactive"));
 
         device.setLastCalibration(LocalDateTime.now());
         device.setNextCalibration(LocalDateTime.now().plusDays(180));
@@ -148,7 +149,7 @@ public class DeviceService {
 
     public List<DeviceCalibrationResponse> getDevicesNeedCalibration() {
         LocalDateTime now = LocalDateTime.now();
-        List<DeviceEntity> devices = deviceRepository.findByNextCalibrationBefore(now);
+        List<DeviceEntity> devices = deviceRepository.findByNextCalibrationBeforeAndStatusNot(now, DeviceStatus.INACTIVE);
 
         return devices.stream()
                 .map(device -> {
@@ -181,7 +182,7 @@ public class DeviceService {
         if (macAddresses == null || macAddresses.isEmpty()) {
             return Collections.emptyList();
         }
-        List<DeviceEntity> foundDevices = deviceRepository.findByDeviceIdIn(macAddresses);
+        List<DeviceEntity> foundDevices = deviceRepository.findByDeviceIdInAndStatusNot(macAddresses, DeviceStatus.INACTIVE);
 
         return foundDevices.stream()
                 .map(this::toDeviceResponse)
