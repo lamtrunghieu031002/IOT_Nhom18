@@ -25,4 +25,8 @@ public class Device {
     public void setName(String name) { this.name = name; }
     public void setModel(String model) { this.model = model; }
     public void setStatus(String status) { this.status = status; }
+
+    public void setCreatedAt(String s) {
+        this.createdAt = s;
+    }
 }

@@ -500,7 +500,6 @@ public class ApiClient {
 
         return true;
     }
-    // --- XÓA TÀI KHOẢN THẬT QUA API ---
     public boolean deleteUser(int userId) throws Exception {
         String url = BASE_URL + "/api/users/" + userId;
 
@@ -513,19 +512,37 @@ public class ApiClient {
             throw new Exception(message);
         }
 
-        // Nếu success = true → trả về true để Panel biết reload bảng
         return true;
     }
     public List<Device> scanAndCheckDevices() throws Exception {
-        // 1. Nhờ Service Bluetooth quét hộ (lấy list MAC)
         List<String> scannedMacs = BluetoothClientScanner.getInstance().scan();
 
         if (scannedMacs.isEmpty()) {
             return new ArrayList<>();
         }
-
-        // 2. Tự gọi API lên Server để check (Logic cũ)
         return checkBatchDevicesWithServer(scannedMacs);
+    }
+    public List<Device> scanDevices() throws Exception {
+        List<String> scannedMacs = BluetoothClientScanner.getInstance().scan();
+
+        List<Device> result = new ArrayList<>();
+
+        if (scannedMacs.isEmpty()) {
+            return result;
+        }
+        for (String mac : scannedMacs) {
+            Device device = new Device();
+
+            device.setDeviceId(mac);
+            device.setName("Thiết bị Bluetooth");
+            device.setModel("Unknown");
+            device.setStatus("MỚI");
+            device.setCreatedAt("");
+
+            result.add(device);
+        }
+
+        return result;
     }
 
     // Hàm gọi API POST /api/devices/check-batch

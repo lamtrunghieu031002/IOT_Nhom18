@@ -20,7 +20,7 @@ public class StatisticsDialog extends JDialog {
     private JButton loadBtn;
 
     public StatisticsDialog(Window owner) {
-        super(owner, "📊 Thống kê lịch sử đo", ModalityType.APPLICATION_MODAL);
+        super(owner, "Thống kê lịch sử đo", ModalityType.APPLICATION_MODAL);
         setSize(450, 420);
         setLocationRelativeTo(owner);
         setLayout(new BorderLayout(10, 10));

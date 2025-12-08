@@ -40,9 +40,9 @@ public class DeviceManagementPanel extends JPanel {
         // ======================================================
         //                    HEADER BUTTONS
         // ======================================================
-        JButton addButton = createStyledButton("➕ Thêm Thiết bị", new Color(46, 204, 113));
-        JButton deleteButton = createStyledButton("➖ Xóa Thiết bị", new Color(231, 76, 60));
-        JButton refreshButton = createStyledButton("🔄 Tải lại", new Color(52, 152, 219));
+        JButton addButton = createStyledButton("Thêm Thiết bị", new Color(46, 204, 113));
+        JButton deleteButton = createStyledButton("Xóa Thiết bị", new Color(231, 76, 60));
+        JButton refreshButton = createStyledButton("Tải lại", new Color(52, 152, 219));
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
         buttonPanel.setBackground(new Color(245, 247, 250));
@@ -151,7 +151,7 @@ public class DeviceManagementPanel extends JPanel {
             loadDevices();
         });
         deleteButton.addActionListener(e -> deleteSelectedDevice());
-        addButton.addActionListener(e -> new AddDeviceDialog(this).setVisible(true));
+        addButton.addActionListener(e -> new ScanDeviceDialog(this).setVisible(true));
 
         // initial load
         loadDevices();

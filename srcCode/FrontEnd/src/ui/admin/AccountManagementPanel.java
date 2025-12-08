@@ -52,10 +52,10 @@ public class AccountManagementPanel extends JPanel {
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
 
         // === BUTTONS ===
-        JButton addButton = buildButton("➕ Thêm Tài khoản", new Color(46, 204, 113));
+        JButton addButton = buildButton("Thêm Tài khoản", new Color(46, 204, 113));
         JButton editButton = buildButton("Cập nhật Tài khoản", new Color(52, 152, 219));
-        JButton deleteButton = buildButton("➖ Xóa Tài khoản", new Color(231, 76, 60));
-        JButton refreshButton = buildButton("🔄 Tải lại", new Color(52, 152, 219));
+        JButton deleteButton = buildButton("Xóa Tài khoản", new Color(231, 76, 60));
+        JButton refreshButton = buildButton("Tải lại", new Color(52, 152, 219));
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         buttonPanel.setBackground(Color.WHITE);
