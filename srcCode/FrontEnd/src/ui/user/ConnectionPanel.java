@@ -31,7 +31,7 @@ public class ConnectionPanel extends JPanel {
         setBackground(new Color(245, 247, 250));
 
         // ================= HEADER ====================
-        JLabel header = new JLabel("🔵 QUẢN LÝ KẾT NỐI BLUETOOTH", SwingConstants.CENTER);
+        JLabel header = new JLabel("QUẢN LÝ KẾT NỐI BLUETOOTH", SwingConstants.CENTER);
         header.setOpaque(true);
         header.setFont(new Font("Segoe UI", Font.BOLD, 20));
         header.setForeground(Color.WHITE);
@@ -95,9 +95,9 @@ public class ConnectionPanel extends JPanel {
         JPanel buttonContainer = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
         buttonContainer.setOpaque(false);
 
-        btnScan = createStyledButton("📡 Quét thiết bị", new Color(46, 204, 113));
-        btnConnect = createStyledButton("🔗 Kết nối", new Color(52, 152, 219));
-        btnDisconnect = createStyledButton("❌ Ngắt kết nối", new Color(231, 76, 60));
+        btnScan = createStyledButton("Quét thiết bị", new Color(46, 204, 113));
+        btnConnect = createStyledButton("Kết nối", new Color(52, 152, 219));
+        btnDisconnect = createStyledButton("Ngắt kết nối", new Color(231, 76, 60));
 
         btnScan.addActionListener(e -> scanBluetoothDevices());
         btnConnect.addActionListener(e -> connectDevice());
@@ -160,7 +160,7 @@ public class ConnectionPanel extends JPanel {
         btnScan.setEnabled(false);
         btnConnect.setEnabled(false);
         btnDisconnect.setEnabled(false);
-        statusLabel.setText("⏳ Đang quét môi trường xung quanh (Vui lòng đợi)...");
+        statusLabel.setText("Đang quét môi trường xung quanh (Vui lòng đợi)...");
         statusLabel.setForeground(new Color(230, 126, 34));
 
         tableModel.setRowCount(0);
