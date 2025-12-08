@@ -372,9 +372,23 @@ public class ApiClient {
         return mockData;
     }
     public boolean submitMeasurement(Map<String, Object> data) throws Exception {
-        // Thực hiện API POST /api/measurement/submit
-        System.out.println("API Call: POST /api/measurement/submit with data: " + data.keySet());
-        Thread.sleep(1000);
+        String url = BASE_URL + "/api/measurements";
+
+        // Chuyển Map thành JSONObject
+        // Lưu ý: Các key trong Map phải khớp với MeasurementRequest của API
+        // (deviceId, subjectName, subjectId, subjectAge, subjectGender, alcoholLevel, location...)
+        JSONObject requestBody = new JSONObject(data);
+
+        // Debug log
+        System.out.println("Sending Measurement JSON: " + requestBody.toString());
+
+        String response = sendHttpRequest("POST", url, requestBody.toString());
+        JSONObject json = new JSONObject(response);
+
+        if (!json.getBoolean("success")) {
+            throw new Exception(json.optString("message", "Gửi kết quả đo thất bại"));
+        }
+
         return true;
     }
 

@@ -1,7 +1,6 @@
 package service;
 
-import model.Device; // Đảm bảo đã import model Device
-
+import model.Device;
 import javax.bluetooth.*;
 import javax.microedition.io.Connector;
 import javax.microedition.io.StreamConnection;
@@ -10,35 +9,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/**
- * Service quản lý Bluetooth Singleton.
- * Lưu trạng thái kết nối (Session) để dùng chung cho toàn bộ ứng dụng.
- */
 public class BluetoothClientScanner implements DiscoveryListener {
 
     private static BluetoothClientScanner instance;
 
     private StreamConnection streamConnection;
     private BufferedReader reader;
-
-    // --- THÊM: Biến Output Stream toàn cục để sửa lỗi 10053 ---
     private OutputStream os;
 
-    // --- THÊM: Biến lưu trữ đối tượng Device để hiển thị lại UI ---
     private Device currentDevice;
-
     private Thread listeningThread;
+
+    // Dùng volatile để đảm bảo tính nhất quán giữa các luồng
     private volatile boolean isConnected = false;
 
-    // Các biến cũ (có thể giữ lại hoặc dùng getter từ currentDevice)
+    // Biến cờ để phân biệt Ngắt chủ động hay Bị rớt mạng
+    private volatile boolean isDisconnecting = false;
+
     private String currentDeviceName = null;
     private String currentMacAddress = null;
 
-    // Biến cho việc Quét (Scan)
     private final Object scanLock = new Object();
     private List<String> foundMacs = new ArrayList<>();
-
-    // Danh sách các listener
     private final List<BluetoothDataListener> dataListeners = new CopyOnWriteArrayList<>();
 
     private BluetoothClientScanner() {}
@@ -50,39 +42,26 @@ public class BluetoothClientScanner implements DiscoveryListener {
         return instance;
     }
 
-    // --- HÀM SCAN (GIỮ NGUYÊN) ---
+    // --- SCAN GIỮ NGUYÊN ---
     public List<String> scan() throws Exception {
         if (isConnected) {
             throw new Exception("Đang kết nối với thiết bị " + currentDeviceName + ". Vui lòng ngắt kết nối trước khi quét.");
         }
-
         foundMacs.clear();
-        LocalDevice localDevice = LocalDevice.getLocalDevice();
-        DiscoveryAgent agent = localDevice.getDiscoveryAgent();
-
-        System.out.println("BT Service: Bắt đầu quét...");
-        agent.startInquiry(DiscoveryAgent.GIAC, this);
-
-        synchronized (scanLock) {
-            scanLock.wait();
-        }
-
-        System.out.println("BT Service: Quét xong. Tìm thấy " + foundMacs.size());
+        LocalDevice.getLocalDevice().getDiscoveryAgent().startInquiry(DiscoveryAgent.GIAC, this);
+        synchronized (scanLock) { scanLock.wait(); }
         return foundMacs;
     }
 
-    @Override
-    public void deviceDiscovered(RemoteDevice btDevice, DeviceClass cod) {
+    @Override public void deviceDiscovered(RemoteDevice btDevice, DeviceClass cod) {
         String mac = btDevice.getBluetoothAddress();
-        if (!foundMacs.contains(mac)) {
-            foundMacs.add(mac);
-        }
+        if (!foundMacs.contains(mac)) foundMacs.add(mac);
     }
-
     @Override public void inquiryCompleted(int discType) { synchronized (scanLock) { scanLock.notify(); } }
     @Override public void servicesDiscovered(int transID, ServiceRecord[] servRecord) {}
     @Override public void serviceSearchCompleted(int transID, int respCode) {}
 
+    // --- CONNECT ---
     public void connect(String macAddress, String deviceName) throws Exception {
         if (isConnected) {
             throw new Exception("Đang có kết nối khác. Hãy ngắt kết nối trước!");
@@ -92,109 +71,125 @@ public class BluetoothClientScanner implements DiscoveryListener {
         String url = "btspp://" + cleanMac + ":1;authenticate=false;encrypt=false;master=false";
 
         try {
-            System.out.println("Đang kết nối tới: " + url);
+            System.out.println("Connecting to: " + url);
             streamConnection = (StreamConnection) Connector.open(url);
 
-            // --- QUAN TRỌNG: Mở luồng Output (os) MỘT LẦN duy nhất tại đây ---
+            // Mở stream
             os = streamConnection.openOutputStream();
             reader = new BufferedReader(new InputStreamReader(streamConnection.openInputStream()));
 
-            // Cập nhật trạng thái
             this.isConnected = true;
+            this.isDisconnecting = false; // Reset cờ
             this.currentMacAddress = macAddress;
             this.currentDeviceName = deviceName;
 
-            // --- TẠO OBJECT DEVICE ĐỂ LƯU SESSION CHO UI ---
-            // Giúp ConnectionPanel khôi phục hiển thị khi chuyển tab
             this.currentDevice = new Device();
-            this.currentDevice.setDeviceId(macAddress); // Hoặc setMacAddress tùy model
+            this.currentDevice.setDeviceId(macAddress);
             this.currentDevice.setName(deviceName);
             this.currentDevice.setStatus("Connected");
 
-            // Bắt đầu lắng nghe dữ liệu
             listeningThread = new Thread(this::listenDataLoop);
             listeningThread.start();
 
         } catch (IOException e) {
-            disconnect(); // Dọn dẹp nếu lỗi
+            disconnect();
             throw new Exception("Kết nối thất bại: " + e.getMessage());
         }
     }
 
-    // --- HÀM DISCONNECT (ĐÃ SỬA ĐỂ ĐÓNG OS) ---
+    // --- DISCONNECT (ĐÃ SỬA ĐỂ CHỐNG TREO UI) ---
     public void disconnect() {
-        isConnected = false;
-        currentMacAddress = null;
-        currentDeviceName = null;
-        currentDevice = null; // Xóa session thiết bị
+        // Nếu đã ngắt rồi thì thôi, tránh lặp
+        if (!isConnected && !isDisconnecting) return;
 
-        try {
-            // Đóng Output Stream
-            if (os != null) {
-                os.close();
+        System.out.println("Đang thực hiện ngắt kết nối...");
+        isDisconnecting = true; // Đánh dấu là người dùng chủ động ngắt
+        isConnected = false;    // Đánh dấu trạng thái logic
+
+        // QUAN TRỌNG: Chạy việc đóng kết nối trong Thread riêng
+        // Lý do: stream.close() có thể bị block nếu luồng đọc đang kẹt
+        new Thread(() -> {
+            try {
+                // 1. Ngắt luồng đọc trước (nếu nó đang ngủ)
+                if (listeningThread != null) {
+                    listeningThread.interrupt();
+                }
+
+                // 2. Đóng Stream Connection (Cái gốc) -> Cái này sẽ khiến readLine() bên kia bung Exception ngay
+                if (streamConnection != null) {
+                    streamConnection.close();
+                }
+
+                // 3. Đóng các thành phần phụ
+                if (os != null) os.close();
+                if (reader != null) reader.close();
+
+            } catch (IOException e) {
+                System.err.println("Lỗi khi đóng kết nối (Không quan trọng): " + e.getMessage());
+            } finally {
+                // Dọn dẹp biến
+                streamConnection = null;
                 os = null;
+                reader = null;
+                currentDevice = null;
+                currentDeviceName = null;
+                currentMacAddress = null;
+                isDisconnecting = false;
+                System.out.println("Đã ngắt kết nối Bluetooth hoàn toàn.");
             }
-            if (reader != null) reader.close();
-            if (streamConnection != null) streamConnection.close();
-
-            if (listeningThread != null && listeningThread.isAlive()) {
-                listeningThread.interrupt();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            reader = null;
-            streamConnection = null;
-            System.out.println("Đã ngắt kết nối Bluetooth.");
-        }
+        }).start();
     }
 
     public void sendData(String data) {
-        // Kiểm tra biến os (đã được mở ở hàm connect)
         if (isConnected && os != null) {
             try {
-                os.write((data + "\n").getBytes()); // Thêm \n để Arduino nhận diện kết thúc chuỗi nhanh hơn
+                os.write((data + "\n").getBytes());
                 os.flush();
-                System.out.println("Đã gửi xuống thiết bị: " + data);
+                System.out.println("Đã gửi: " + data);
             } catch (IOException e) {
                 e.printStackTrace();
-                System.err.println("Lỗi gửi dữ liệu (Socket có thể đã đóng): " + e.getMessage());
-                disconnect(); // Tự động ngắt kết nối nếu gửi lỗi
+                System.err.println("Lỗi gửi dữ liệu: " + e.getMessage());
+                // Nếu lỗi gửi -> Tự động ngắt (coi như mất kết nối)
+                if (!isDisconnecting) disconnect();
             }
-        } else {
-            System.err.println("Không thể gửi: Chưa kết nối hoặc luồng ghi chưa sẵn sàng.");
         }
     }
 
-    public boolean isConnected() {
-        return isConnected;
-    }
-
-    public String getCurrentDeviceName() {
-        return currentDeviceName;
-    }
-
-    // Getter lấy object Device cho UI restore session
-    public Device getCurrentDevice() {
-        return currentDevice;
-    }
-
+    // --- LOOP LẮNG NGHE (ĐÃ SỬA) ---
     private void listenDataLoop() {
         String line;
         try {
-            while (isConnected && reader != null && (line = reader.readLine()) != null) {
-                System.out.println(">>> [SERVICE] Nhận thô từ ESP32: " + line);
-                notifyListeners(line);
+            // Đọc liên tục
+            while (isConnected && reader != null) {
+                // readLine() sẽ block ở đây
+                line = reader.readLine();
+
+                if (line != null) {
+                    System.out.println("ESP32 >> " + line);
+                    notifyListeners(line);
+                } else {
+                    // line null nghĩa là stream đã đóng từ phía kia
+                    break;
+                }
             }
         } catch (IOException e) {
-            if (isConnected) {
-                System.err.println("Mất kết nối đột ngột.");
+            // Khi disconnect() gọi stream.close(), exception sẽ ném ra ở đây
+            if (isDisconnecting) {
+                System.out.println("Kết nối đã đóng chủ động bởi người dùng.");
+            } else {
+                System.err.println("Mất kết nối đột ngột với thiết bị: " + e.getMessage());
+                // Chỉ gọi disconnect() dọn dẹp nếu đây là lỗi rớt mạng thật
                 disconnect();
             }
         }
     }
 
-    // Interface
+    // Getters & Listeners
+    public boolean isConnected() { return isConnected; }
+    public String getCurrentDeviceName() { return currentDeviceName; }
+    public String getCurrentDeviceAddress() { return currentMacAddress; } // Thêm getter này cho UI dùng
+    public Device getCurrentDevice() { return currentDevice; }
+
     public interface BluetoothDataListener {
         void onDataReceived(String data);
     }

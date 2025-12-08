@@ -18,7 +18,11 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
     private JLabel resultLabel;
     private JLabel violationLabel;
     private JLabel statusConnectionLabel;
-    private JTextField nameField, ageField, cccdField, hometownField;
+
+    // Cập nhật các biến nhập liệu
+    private JTextField nameField, ageField, cccdField, locationField; // locationField thay cho hometownField
+    private JComboBox<String> genderComboBox; // Thêm ComboBox giới tính
+
     private JButton submitButton, redoButton;
 
     private Double currentMeasurementResult = null;
@@ -32,7 +36,7 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
         // 1. Đăng ký lắng nghe dữ liệu từ Bluetooth Scanner
         BluetoothClientScanner.getInstance().addDataListener(this);
 
-        // ================= HEADER ====================
+        // ================= HEADER (GIỮ NGUYÊN) ====================
         JPanel resultPanel = new JPanel(new GridLayout(3, 1, 5, 5));
         resultPanel.setBackground(new Color(52, 152, 219));
         resultPanel.setBorder(BorderFactory.createEmptyBorder(15, 10, 15, 10));
@@ -57,7 +61,7 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
 
         add(resultPanel, BorderLayout.NORTH);
 
-        // ================= FORM NHẬP LIỆU ====================
+        // ================= FORM NHẬP LIỆU (ĐÃ SỬA) ====================
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(Color.WHITE);
         formPanel.setBorder(BorderFactory.createCompoundBorder(
@@ -65,27 +69,42 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
                 new EmptyBorder(20, 25, 20, 25)
         ));
 
-        JPanel fields = new JPanel(new GridLayout(4, 2, 12, 15));
+        // Tăng số hàng lên 5 để chứa thêm Giới tính
+        JPanel fields = new JPanel(new GridLayout(5, 2, 12, 15));
         fields.setBackground(Color.WHITE);
 
+        // Khởi tạo các component
         nameField = new JTextField(20);
-        ageField = new JTextField(20);
         cccdField = new JTextField(20);
-        hometownField = new JTextField(20);
 
+        // ComboBox Giới tính
+        String[] genders = {"Nam", "Nữ", "Khác"};
+        genderComboBox = new JComboBox<>(genders);
+        genderComboBox.setBackground(Color.WHITE);
+
+        ageField = new JTextField(20);
+        locationField = new JTextField(20); // Thay thế hometownField
+
+        // Thêm vào Panel theo thứ tự hợp lý
         fields.add(new JLabel("Họ và tên:"));
         fields.add(nameField);
-        fields.add(new JLabel("Tuổi:"));
-        fields.add(ageField);
+
         fields.add(new JLabel("CCCD:"));
         fields.add(cccdField);
-        fields.add(new JLabel("Quê quán:"));
-        fields.add(hometownField);
+
+        fields.add(new JLabel("Giới tính:")); // Mới
+        fields.add(genderComboBox);
+
+        fields.add(new JLabel("Tuổi:"));
+        fields.add(ageField);
+
+        fields.add(new JLabel("Nơi đo:")); // Đổi từ Quê quán thành Nơi đo
+        fields.add(locationField);
 
         formPanel.add(fields);
         add(formPanel, BorderLayout.CENTER);
 
-        // ================= BUTTONS ====================
+        // ================= BUTTONS (GIỮ NGUYÊN) ====================
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
         buttonPanel.setBackground(new Color(245, 247, 250));
 
@@ -96,7 +115,7 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
         styleButton(redoButton, new Color(230, 126, 34), new Color(211, 84, 0));
 
         submitButton.setEnabled(false);
-        redoButton.setEnabled(false); // Mặc định tắt nếu chưa kết nối
+        redoButton.setEnabled(false);
 
         buttonPanel.add(submitButton);
         buttonPanel.add(redoButton);
@@ -108,7 +127,6 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
         redoButton.addActionListener(e -> triggerRedo());
 
         // ================= TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI =================
-        // Khi tab này hiển thị, cập nhật ngay trạng thái kết nối
         addAncestorListener(new AncestorListener() {
             @Override
             public void ancestorAdded(AncestorEvent event) {
@@ -118,25 +136,22 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
             @Override public void ancestorMoved(AncestorEvent event) {}
         });
 
-        // Chạy lần đầu
         updateConnectionUI();
     }
 
-    // Hàm cập nhật giao diện dựa trên trạng thái Scanner hiện tại
+    // Hàm cập nhật giao diện kết nối
     private void updateConnectionUI() {
         BluetoothClientScanner scanner = BluetoothClientScanner.getInstance();
         boolean isConnected = scanner.isConnected();
 
         if (isConnected) {
-            // Lấy tên thiết bị trực tiếp từ Scanner (Scanner bạn gửi trả về String)
             String deviceName = scanner.getCurrentDeviceName();
-
             statusConnectionLabel.setText("Đang kết nối với: " + (deviceName != null ? deviceName : "Unknown"));
-            statusConnectionLabel.setBackground(new Color(39, 174, 96)); // Xanh lá
+            statusConnectionLabel.setBackground(new Color(39, 174, 96));
             redoButton.setEnabled(true);
         } else {
             statusConnectionLabel.setText("Chưa kết nối thiết bị Bluetooth");
-            statusConnectionLabel.setBackground(new Color(231, 76, 60)); // Đỏ
+            statusConnectionLabel.setBackground(new Color(231, 76, 60));
             redoButton.setEnabled(false);
         }
     }
@@ -145,14 +160,12 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
     @Override
     public void onDataReceived(String rawData) {
         SwingUtilities.invokeLater(() -> {
-            // 1. Nhận tín hiệu bắt đầu đo
             if (rawData.contains("StartMesuring")) {
                 resultLabel.setText("Đang đo... (Thổi vào cảm biến)");
                 resultLabel.setForeground(Color.YELLOW);
                 violationLabel.setText("Vui lòng đợi 5 giây...");
                 submitButton.setEnabled(false);
             }
-            // 2. Nhận kết quả đo
             else if (rawData.startsWith("GetAlcohol|")) {
                 parseAndDisplayResult(rawData);
             }
@@ -161,10 +174,7 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
 
     private void parseAndDisplayResult(String rawData) {
         try {
-            // Tách chuỗi JSON sau dấu |
             String jsonPart = rawData.substring(rawData.indexOf("|") + 1);
-
-            // Dùng Regex lấy giá trị
             Pattern pLevel = Pattern.compile("\"alcohol_level\":([0-9.]+)");
             Matcher mLevel = pLevel.matcher(jsonPart);
 
@@ -177,10 +187,9 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
 
                 this.currentMeasurementResult = level;
 
-                // Hiển thị cảnh báo
                 if (status.equalsIgnoreCase("HIGH")) {
                     this.currentViolationLevel = "Vượt mức (Cảnh báo)";
-                    resultLabel.setForeground(new Color(255, 100, 100)); // Đỏ nhạt
+                    resultLabel.setForeground(new Color(255, 100, 100));
                 } else {
                     this.currentViolationLevel = "Bình thường (An toàn)";
                     resultLabel.setForeground(Color.WHITE);
@@ -205,52 +214,99 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
             JOptionPane.showMessageDialog(this, "Chưa kết nối thiết bị!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             return;
         }
-
-        // Reset giao diện
         resultLabel.setText("Đang yêu cầu đo lại...");
         resultLabel.setForeground(Color.WHITE);
         violationLabel.setText("---");
         submitButton.setEnabled(false);
-
-        // Gửi lệnh xuống ESP32 (Hàm này cần được thêm vào Scanner ở BƯỚC 1)
         BluetoothClientScanner.getInstance().sendData("GetAlcohol");
     }
 
     private void submitData() {
-        if (currentMeasurementResult == null) return;
+        if (currentMeasurementResult == null) {
+            JOptionPane.showMessageDialog(this, "Chưa có kết quả đo!", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
 
+        // 1. Validate dữ liệu đầu vào cơ bản
+        String name = nameField.getText().trim();
+        String cccd = cccdField.getText().trim();
+        String ageStr = ageField.getText().trim();
+        String location = locationField.getText().trim();
+
+        if (name.isEmpty() || cccd.isEmpty() || ageStr.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng điền đầy đủ thông tin!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int age;
+        try {
+            age = Integer.parseInt(ageStr);
+            if (age < 16 || age > 100) {
+                JOptionPane.showMessageDialog(this, "Tuổi phải từ 16 đến 100.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Tuổi phải là một số nguyên.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // 2. Lấy Device ID từ Bluetooth Scanner (Giả sử Scanner lưu địa chỉ MAC hoặc ID)
+        String deviceId = BluetoothClientScanner.getInstance().getCurrentDevice().getDeviceId();
+        if (deviceId == null || deviceId.isEmpty()) {
+            deviceId = "UNKNOWN_DEVICE";
+             JOptionPane.showMessageDialog(this, "Không xác định được ID thiết bị!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+             return;
+        }
+
+        // 3. Chuẩn bị Map dữ liệu
         Map<String, Object> data = new HashMap<>();
-        data.put("name", nameField.getText());
-        data.put("age", ageField.getText());
-        data.put("cccd", cccdField.getText());
-        data.put("hometown", hometownField.getText());
-        data.put("result", currentMeasurementResult);
-        data.put("violation", currentViolationLevel);
-        data.put("timestamp", System.currentTimeMillis());
+        data.put("deviceId", deviceId);                    // String (Required)
+        data.put("subjectName", name);                     // String (Required)
+        data.put("subjectId", cccd);                       // String (Required)
+        data.put("subjectAge", age);                       // Integer (Required, min 16)
+        data.put("subjectGender", genderComboBox.getSelectedItem().toString()); // String
+        data.put("alcoholLevel", currentMeasurementResult); // Double
+        data.put("location", location);                    // String
+        data.put("locationCoordinates", "");               // String (Optional, để trống nếu chưa có GPS)
+
+        // 4. Gửi dữ liệu qua Worker
+        submitButton.setEnabled(false); // Khóa nút để tránh bấm nhiều lần
 
         new SwingWorker<Boolean, Void>() {
             @Override
             protected Boolean doInBackground() throws Exception {
+                // Gọi ApiClient
                 return ApiClient.getInstance().submitMeasurement(data);
             }
+
             @Override
             protected void done() {
+                submitButton.setEnabled(true);
                 try {
                     if (get()) {
-                        JOptionPane.showMessageDialog(MeasurementPanel.this, "Lưu dữ liệu thành công!");
+                        JOptionPane.showMessageDialog(MeasurementPanel.this, "Gửi dữ liệu thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                        // Reset form sau khi gửi thành công
                         nameField.setText("");
-                        ageField.setText("");
                         cccdField.setText("");
-                        hometownField.setText("");
+                        ageField.setText("");
+                        locationField.setText("");
+                        genderComboBox.setSelectedIndex(0);
+
+                        // Reset kết quả đo để chuẩn bị cho lượt mới
+                        resultLabel.setText("Đang chờ dữ liệu...");
+                        violationLabel.setText("---");
+                        currentMeasurementResult = null;
+                    } else {
+                        JOptionPane.showMessageDialog(MeasurementPanel.this, "Gửi thất bại! Vui lòng kiểm tra Server.", "Lỗi", JOptionPane.ERROR_MESSAGE);
                     }
                 } catch (Exception e) {
-                    JOptionPane.showMessageDialog(MeasurementPanel.this, "Lỗi gửi API: " + e.getMessage());
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(MeasurementPanel.this, "Lỗi hệ thống: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
                 }
             }
         }.execute();
     }
 
-    // Hủy đăng ký listener khi Panel bị đóng
     @Override
     public void removeNotify() {
         BluetoothClientScanner.getInstance().removeDataListener(this);
