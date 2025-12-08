@@ -67,7 +67,7 @@ public class HistoryPanel extends JPanel {
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
 
         // === STATISTICS BUTTON ===
-        JButton statisticsButton = new JButton("📈 Thống kê Lịch sử Đo");
+        JButton statisticsButton = new JButton("Thống kê Lịch sử Đo");
         statisticsButton.setForeground(Color.WHITE);
         statisticsButton.setBackground(new Color(52, 152, 219));
         statisticsButton.setFont(new Font("Segoe UI", Font.BOLD, 14));

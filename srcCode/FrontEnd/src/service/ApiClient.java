@@ -374,9 +374,6 @@ public class ApiClient {
     public boolean submitMeasurement(Map<String, Object> data) throws Exception {
         String url = BASE_URL + "/api/measurements";
 
-        // Chuyển Map thành JSONObject
-        // Lưu ý: Các key trong Map phải khớp với MeasurementRequest của API
-        // (deviceId, subjectName, subjectId, subjectAge, subjectGender, alcoholLevel, location...)
         JSONObject requestBody = new JSONObject(data);
 
         // Debug log

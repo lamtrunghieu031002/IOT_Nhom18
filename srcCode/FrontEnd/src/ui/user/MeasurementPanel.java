@@ -188,10 +188,10 @@ public class MeasurementPanel extends JPanel implements BluetoothClientScanner.B
                 this.currentMeasurementResult = level;
 
                 if (status.equalsIgnoreCase("HIGH")) {
-                    this.currentViolationLevel = "Vượt mức (Cảnh báo)";
+                    this.currentViolationLevel = "Nguy hiểm";
                     resultLabel.setForeground(new Color(255, 100, 100));
                 } else {
-                    this.currentViolationLevel = "Bình thường (An toàn)";
+                    this.currentViolationLevel = "An toàn";
                     resultLabel.setForeground(Color.WHITE);
                 }
 

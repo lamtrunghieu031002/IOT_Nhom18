@@ -97,7 +97,6 @@ public class BluetoothClientScanner implements DiscoveryListener {
         }
     }
 
-    // --- DISCONNECT (ĐÃ SỬA ĐỂ CHỐNG TREO UI) ---
     public void disconnect() {
         // Nếu đã ngắt rồi thì thôi, tránh lặp
         if (!isConnected && !isDisconnecting) return;
@@ -106,8 +105,6 @@ public class BluetoothClientScanner implements DiscoveryListener {
         isDisconnecting = true; // Đánh dấu là người dùng chủ động ngắt
         isConnected = false;    // Đánh dấu trạng thái logic
 
-        // QUAN TRỌNG: Chạy việc đóng kết nối trong Thread riêng
-        // Lý do: stream.close() có thể bị block nếu luồng đọc đang kẹt
         new Thread(() -> {
             try {
                 // 1. Ngắt luồng đọc trước (nếu nó đang ngủ)
